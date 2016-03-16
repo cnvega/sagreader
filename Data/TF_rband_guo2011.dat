@@ -1,0 +1,11 @@
+# r-band Tully-Fisher relation
+# Data for isolated disc galaxies from Blanton et al. (2008) and
+# Springob et al. (2007)
+# logVmax err_logVmax M_r-5logh err_M_r-5logh
+1.73 0.24 -14.60 1.00
+2.11 0.08 -18.50 0.50
+2.22 0.08 -19.50 0.50
+2.33 0.08 -20.50 0.50
+2.44 0.08 -21.50 0.50
+2.58 0.03 -22.50 0.50
+
