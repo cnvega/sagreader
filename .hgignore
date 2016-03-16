@@ -1,0 +1,9 @@
+syntax: glob
+
+plots/*
+Figures/*
+*.eps
+*.pyc
+*.hdf5
+*.h5
+
