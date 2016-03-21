@@ -1,9 +1,22 @@
 #! /usr/bin/env python
 
+## @file SAGreader.py
+## @author Cristian A. Vega Martínez <cnvega(at)fcaglp.unlp.edu.ar>
+##
+## @brief SAG output reader module.
+##
+## A collection of classes to load and extract data from standard and
+## reduced h5df output files of the SAG code for galaxy formation and 
+## evolution. 
+
+
 import h5py
 import numpy as np
 
 class _UnitMass:
+   """
+   Internal class which stores the most used mass conversion constants.
+   """
    def __init__(self, in_gr):
       self.gr   = in_gr
       self.kg   = in_gr/1e3
@@ -11,6 +24,9 @@ class _UnitMass:
       self.e10Msun = self.Msun/1e10
 
 class _UnitLength:
+   """
+   Internal class which stores the most used length conversion constants.
+   """
    def __init__(self, in_cm):
       self.cm = in_cm
       self.m  = in_cm/1e2
@@ -19,6 +35,9 @@ class _UnitLength:
       self.Mpc = self.kpc/1e3
       
 class _UnitVelocity:
+   """
+   Internal class which stores the most used velocity conversion constants.
+   """
    def __init__(self, in_cm_per_s):
       self.cm_per_s = in_cm_per_s
       self.m_per_s  = in_cm_per_s/1e2
@@ -26,6 +45,9 @@ class _UnitVelocity:
       self.km_per_hr = self.km_per_s*3600.0
 
 class _UnitTime:
+   """
+   Internal class which stores the most used time conversion constants.
+   """
    def __init__(self, in_s):
       self.s = in_s
       self.hr = in_s/3600.0
@@ -34,11 +56,33 @@ class _UnitTime:
       self.Gyr = self.Myr/1e3
 
 class Units:
+   """ Unit conversion constants.
+
+The class 'Units' has as attributes all the possible unit conversion constants
+in a specific SAG data file or collection. The object can be used as conversion
+factor of the desired unit without considering the 'h' scaling, or applying a full
+conversion by using the unit() method.
+
+Example:
+
+un = Unit(l_cm, m_gr, vel_cm_s)
+
+StellarMass_in_gr = stellarMass*un.mass.gr
+
+Positions_in_mpc   = positions*un.length.Mpc
    """
-   The class 'Units' has as attributes all the possible unit conversion in
-   a specific SAG data file.
-   """
+
    def __init__(self, length_in_cm, mass_in_gr, vel_in_cm_per_s, h):
+      """ Constructor.
+      
+This four parameters are needed.
+
+@param length_in_cm: length conversion constant in cm
+@param mass_in_gr: mass conversion constant in gr
+@param vel_in_cm_per_s: velocity conversion constant in cm_s
+@param h: Hubble constant in units of 100 km_s_Mpc
+      """
+
       self.mass   = _UnitMass(mass_in_gr)
       self.length = _UnitLength(length_in_cm)
       self.velocity = _UnitVelocity(vel_in_cm_per_s)
@@ -46,6 +90,16 @@ class Units:
       self.h = h
 
    def unit(self, unit_tag):
+      """ Get conversion factor from tag.
+
+It calculates and returns the conversion constant of a requested unit 
+by considering the 'h' scaling.
+
+@param unit_tag string with the desired unit (examples: 'Msun', 'kpc/h').
+A KeyError is raised when the tag is not found.
+
+@return The requested conversion factor.
+      """
       tag = unit_tag.lower()
       if tag in ['msun', 'ms', 'sollarmasses']:
          return self.mass.Msun/self.h
@@ -53,7 +107,7 @@ class Units:
          return self.mass.Msun
       elif tag in ['1e10msun', '1e10ms']:
          return self.mass.e10Msun/self.h
-      elif tag in ['1e10msun/h', '1ems/h']:
+      elif tag in ['1e10msun/h', '1e10ms/h']:
          return self.mass.e10Msun
       elif tag in ['mpc']:
          return self.length.Mpc/self.h
@@ -74,25 +128,43 @@ class Units:
 
 
 class SAGdata:
-   """
-   The class 'SAGdata' stores a collection of hdf5 output files
-   created by the SAG code. It can extract a particular array from
-   all the stored files and returns a unique numpy array with the 
-   requested data.
-   """
+   """ One snapshot SAG output containing multiple files/boxes.
+
+The class 'SAGdata' stores a collection of hdf5 output files
+created by the SAG code. It can extract a particular array from
+all the stored files and returns a unique numpy array with the 
+requested data. All the hdf5 files have to be added manually.
+"""
+
    def __init__(self, simname, boxSizeMpc):
+      """ Constructor.
+
+It creates an empty collection of files. The parameter values are not used in
+this class, but are useful when plotting the data.
+      
+@param simname String containing a tag name for the simulation (unused).
+@param boxSizeMpc Box size of the simulation box (unused).
+
       """
-      It creates an empty collection of files.
-      """
+      ## Reference name of the simulation.
       self.simname = str(simname)
+      ## List with the names of opened hdf5 files.
       self.filenames = []
+      ## List with the opened hdf5 files of the SAG output.
       self.dataList = []
+      ## Number of loaded files.
       self.nfiles = 0
+      ## Box size of the simulation in Mpc.
       self.boxSizeMpc = boxSizeMpc
+      ## Tag indicating if the hdf5 files are in the reduced format or not.
       self.reduced = False
 
 
    def clear(self):
+      """ Object cleaner.
+
+It deletes all the internal lists and it closes all the loaded files.
+      """
       self.simname = ""
       del self.filenames[:]
       self.nfiles = self.boxSizeMpc = 0
@@ -102,8 +174,13 @@ class SAGdata:
         
 
    def addFile(self, filename):
-      """
-      It adds an hdf5 file to the object.
+      """ Add one file to the object.
+
+It adds and opens one hdf5 file to the internal lists. An Input/Output error is
+raised if the file cannot be loaded.
+
+@param filename Name of the file to be loaded. The path can be absolute or
+relative.
       """
       try:
          sag = h5py.File(filename, "r")
@@ -124,15 +201,25 @@ class SAGdata:
 
 
    def readDataset(self, dsname, idxfilter=[]):
-      """
-      It returns a unique numpy array of the requested dataset only
-      if it exists in all loaded SAG files.
+      """ Dataset reader.
 
-      The idxfilter can be created with numpy.where(condition), for example:
-      >>> types = d.readDataset("Type")
-      >>> row, col = numpy.where(types == 0)
-      >>> discMass  = d.readDataset("DiscMass", idxfilter=row)
-      >>> pos = d.readDataset("Pos", idxfilter=row)
+It returns a unique numpy array of the requested dataset only
+if it exists in all loaded SAG files. It creates a concatenated array
+considering all the files.
+
+@param dsname String with name of the desired dataset.
+@param idxfilter (optional) numpy array for filtering the requested data. 
+It can be created with numpy.where(condition), for example:
+
+> types = d.readDataset("Type")
+
+> row, col = numpy.where(types == 0)
+
+> discMass  = d.readDataset("DiscMass", idxfilter=row)
+
+> pos = d.readDataset("Pos", idxfilter=row)
+
+@return A numpy array with the requested dataset.
       """
       for i, sag in enumerate(self.dataList):
          dsarr = np.array(sag.get(dsname))
@@ -152,9 +239,16 @@ class SAGdata:
 
 
    def readAttr(self, attname, fnum=0):
-      """
-      It returns the value of the requested attribute from a particular
-      file of the list.
+      """ Attribute reader.
+
+It returns the value of the requested attribute from a particular
+file of the list. A KeyError is raised if not found.
+
+@param attname String with the name of the desired attribute. 
+@param fnum (optional) File number, starting from zero, from which
+the attribute is extracted. The first file is used as default.
+
+@return Content of the requested attribute.
       """
       try:
          attr = self.dataList[fnum].attrs[attname]
@@ -166,9 +260,15 @@ class SAGdata:
 
 
    def readUnits(self, fnum=0):
-      """
-      It returns an instance of the 'Units' class, with all the unit conversions
-      of the data found in the firts hdf5 file of the list.
+      """ Unit reader.
+
+It returns an instance of the 'Units' class, with all the unit conversions
+of the data.
+
+@param fnum (optional) File number, starting from zero, from which
+the units are extracted. The first file is used as default.
+
+@return A 'Unit' object with all the conversion constant of the loaded data.
       """
       if 0 < self.nfiles:
          if not self.reduced:
@@ -187,7 +287,19 @@ class SAGdata:
       else:
          return None
 
+
    def datasetList(self, fnum=0, group="/"):
+      """ Get the list of datasets.
+
+It recursively extracts the list of datasets from a group of a particular loaded
+file.
+
+@param fnum (optional) File number, starting from zero, from which
+the dataset keys are extracted. The first file is used as default.
+@param group (optional) Group in the hdf5 hierarchy. The group is used as default.
+
+@return A List with all the names of the datasets found. 
+      """
       ks = []
       for tag in self.dataList[fnum][group].keys():
          if type(self.dataList[fnum][group+tag]) is h5py._hl.dataset.Dataset:
@@ -199,7 +311,17 @@ class SAGdata:
 
 
    def _gal_idxs(self, ids, dsname):
+      """ Get index of galaxies from their IDs.
 
+It returns the internal location of the galaxies identified by a list of ids
+
+@param ids A unique or a list of galaxy IDs to search.
+@param dsname The name of the dataset in which the galaxy ids are stored.
+
+@return (idxs, boxes) It returns two numpy arrays specifying the location of the
+galaxies. An 'indexes' array with the location of the galaxies in their corresponding
+files, and a 'boxes' array indicating the file to which each galaxy belongs. 
+      """
       if type(ids) != list: ids = [ids]
       idxs = []
       boxes = []
@@ -212,6 +334,18 @@ class SAGdata:
   
 
    def getGalaxies(self, dslist='all'):
+      """ Retrieve galaxies.
+
+It creates a dictionary with all the requested datasets including all the galaxies
+found in the loaded files. 
+
+@param dslist (optional) A string or a list of strings with the names of the datasets
+to be included. The default behavior is to include all the datasets found in the
+files.
+
+@return A dictionary with one numpy array for each requested dataset. The names of
+the datasets are preserved as tags of the dictionary.
+      """
       if dslist == 'all':
          dslist = self.datasetList()
       gal = {}
@@ -222,9 +356,20 @@ class SAGdata:
 
 
    def getGalaxies_by_ids(self, ids, dslist='all'):
-      """
-      It returns a dictionary with the different datasets for all the requested
-      galaxies.
+      """ Retrieve galaxies by their ids.
+
+It creates a dictionary with all the requested datasets including ONLY the galaxies
+with the desired ids.
+
+WARNING: This method could be time-consuming.
+
+@param ids A unique or a list of galaxy IDs to search.
+@param dslist (optional) A string or a list of strings with the names of the datasets
+to be included. The default behavior is to include all the datasets found in the
+files.
+
+@return A dictionary with one numpy array for each requested dataset. The names of
+the datasets are preserved as tags of the dictionary.
       """
       if dslist == 'all':
          dslist = self.datasetList()
@@ -245,21 +390,47 @@ class SAGdata:
 
 
 class SAGcollection():
-   """
-   A collection of SAGdata objects of SAG. It assumes the outputs are ordered in
-   different directories (one per snapshot/redshift).
+   """ A collection of SAG outputs containing multiple boxes and redshifts. 
+
+The class 'SAGcollection' is a compound of 'SAGdata' objects classified by
+their redshifts. It behaves as a 'SAGdata' object but included the redshift
+management of the data, including the dataset and galaxy requests. The 'multisnap'
+flag included as argument in most of the method controls if the outputs must extract
+and return the data from different redshifts or just the lowest one. A z range can be
+specified in each case.
    """
 
    def __init__(self, filename, boxSizeMpc=0):
+      """ It creates a new catalog collection.
+
+It reads a specific directory and creates a collection of SAG outputs classified and
+ordered by their redshifts. 
+
+@param filename Input directory in which the SAG files are looked and loaded.
+Those hdf5 files can share the same directory in which case the 
+classification and ordering is made by
+reading the 'Redshift' attribute of each one, or can be separated by
+redshift/snapshot in
+different folders named 'snapshot_NNN', where NNN is the snapshot number.
+@param boxSizeMpc (optional) The box size of the simulation in Mpc. If this argument
+in omitted, it is loaded by default a file called 'simdata.txt' 
+from the catalogs folder. The file must contain just two lines: a tag name of the
+simulation and its box size in Mpc.
       """
-      It creates a new catalog collection from a specified directory
-      """
+
+      ## List with the 'SAGdata' objects for each redshift/snapshot.
       self.dataList  = []
+      ## List with the tag name of each snapshot.
       self.snaptag   = []
+      ## List with the number of files loaded in each snapshot.
       self.nfiles    = []
+      ## List with the corresponding redshift of each snapshot.
       self.redshift  = []
+      ## Number of redshits/snapshots loaded.
       self.nz        = 0
+      ## Box size of the simulation in Mpc.
       self.boxSizeMpc = 0
+      ## Index in which the lowest redsfhit is located.
       self.zminidx    = -1
      
       if 0 != boxSizeMpc:
@@ -336,6 +507,10 @@ class SAGcollection():
 
 
    def clear(self):
+      """ Object cleaner.
+
+It deletes all the internal lists and it closes all the loaded files.
+      """
       del self.snaptag[:]
       del self.nfiles[:]
       del self.redshift[:]
@@ -347,9 +522,14 @@ class SAGcollection():
    
 
    def _lookup_z(self, zlow, zhigh):
-      """
-      It returns a list with the redshifts of the collection that are in the
-      range zlow <= Z <= zhigh.
+      """ Search a redshift range.
+
+It searches for the loaded redshifts which are in the specified range.
+
+@param zlow Lower redshift of the range.
+@param zhigh Higher redshift of the range.
+@return A list with the redshifts of the collection that are in the
+range zlow <= Z <= zhigh.
       """
       zl = []
       for z in self.redshift:

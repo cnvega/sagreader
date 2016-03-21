@@ -6,4 +6,4 @@ Figures/*
 *.pyc
 *.hdf5
 *.h5
-
+Documentation/*
