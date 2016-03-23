@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# coding: utf-8
 
 ## @file SAGreader.py
 ## @author Cristian A. Vega Martínez <cnvega(at)fcaglp.unlp.edu.ar>
@@ -194,7 +195,9 @@ relative.
       if 1 == self.nfiles:
          try:
             attr = self.dataList[0].attrs['REDUCED_HDF5']
-            if attr == 'YES':
+            if type(attr) is np.bytes_:
+               attr = attr.decode()
+            if 'YES' == attr:
                self.reduced = True
          except KeyError:
             pass
@@ -538,6 +541,13 @@ range zlow <= Z <= zhigh.
       return zl
 
 
+   def select_redshift(zmin, zmax):
+      zm = min(self._lookup_z(zmin, zmax))
+      idx = self.redshift.index(zm)
+      return self.dataList[idx]
+
+
+
    def readDataset(self, dsname, multiSnaps=False, zrange=None, **kwargs):
       """
       It searches for an unique or a set of redshifts or boxes and returns the 
@@ -666,6 +676,33 @@ range zlow <= Z <= zhigh.
       return gal
       
       
+class SnapList():
+   def __init__(self, fname):
+      f = open(fname, "r")
+      self.snap = []
+      scales = []
+      redshifts = []
+      snp = 0
+      for line in f.readlines():
+         if line[0] == '#': continue
+         # check the format of the list:
+         values = line.split() 
+         if 5 == len(values):
+            snap, a, z = values[0:3]
+         if 1 == len(values):
+            snap = snp
+            snp += 1
+            a = values[0]
+            z = 1./float(a) - 1.
+         self.snap.append(int(snap))
+         scales.append(float(a))
+         redshifts.append(float(z))
+      self.scales = np.array(scales)
+      self.redshifts = np.array(redshifts)
+   def __getitem__(self, k):
+      idx = self.snap.index(k)
+      return self.scales[idx], self.redshifts[idx]
+       
 
 class SAGreader():
    """
