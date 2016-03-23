@@ -2,7 +2,54 @@
 
 import SAGreader as sag
 import SAGplots
+import SAGplots_evol
 import os
+
+def plots_MDPL():
+
+   outfolder = "plots/SAG-7.86-MDPL"
+   outdat = outfolder+"/data.h5"
+   
+   if not os.path.exists(outfolder):
+      os.makedirs(outfolder)
+
+   inpath = "/fast_scratch3/cnvega/MDPL/SAG/SAG7.86-completed/snapshot_125"
+   data = sag.SAGcollection(inpath, 1000.0)   
+
+
+   # 1st: smf
+   SAGplots.SMF(data, outfolder, savefile=outdat, redshift=0)
+
+   # 2nd: morph
+   SAGplots.FracMorph(data, outfolder, savefile=outdat)
+
+   # BH-B
+   SAGplots.BHBulge(data, outfolder, savefile=outdat)
+
+   # SFR density:
+   snaplist = sag.SnapList("/fast_scratch2/cnvega/MDPL/snapidzred.txt")
+   SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
+
+   # High-z SMF:
+   #data_tmp = data.select_redshift(0.99, 1.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=1)
+
+   #data_tmp = data.select_redshift(1.99, 2.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=2)
+
+   data.clear()
+
+   sagfolder = "/fast_scratch3/cnvega/MDPL/SAG/SAG7.86-completed/snapshot_092"
+   data = sag.SAGcollection(sagfolder, 1000.0) 
+   SAGplots.SMF(data, outfolder, savefile=outdat, redshift=1)
+   data.clear()
+
+   sagfolder = "/fast_scratch3/cnvega/MDPL/SAG/SAG7.86-completed/snapshot_075"
+   data = sag.SAGcollection(sagfolder, 1000.0) 
+   SAGplots.SMF(data, outfolder, savefile=outdat, redshift=2)
+   data.clear()
+
+
 
 def plots_simu():
 
@@ -24,6 +71,42 @@ def plots_simu():
 
    # BH-B
    SAGplots.BHBulge(data, outfolder, savefile=outdat)
+
+
+def plots_MBII():
+
+   outfolder = "plots/SAG-7.92-MBII"
+   outdat = outfolder+"/data.h5"
+   
+   inpath = "/data/MBII/SalidaSAM/SAG-7.92"
+   data = sag.SAGcollection(inpath, 100)   
+
+   if not os.path.exists(outfolder):
+      os.makedirs(outfolder)
+
+   # 1st: smf
+   SAGplots.SMF(data, outfolder, savefile=outdat)
+
+   # 2nd: morph
+   SAGplots.FracMorph(data, outfolder, savefile=outdat)
+
+   # BH-B
+   SAGplots.BHBulge(data, outfolder, savefile=outdat)
+
+   # SFR density:
+   #snaplist = SAGreader.SnapList("/data/MBII/snapidzred.txt")
+   #SAGplots_evol.SFRdensity_z(data, snaplist, outfolder, savefile=outdat)
+
+   # High-z SMF:
+   #data_tmp = data.select_redshift(0.99, 1.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=1)
+
+   #data_tmp = data.select_redshift(1.99, 2.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=2)
+
+   data.clear()
+
+
 
 def plots_stand(modelid):
    
@@ -63,5 +146,7 @@ def plots_stand(modelid):
 
 if __name__ == '__main__':
    #plots_simu()
-   plots_stand("SAG-7.c87")
+   #plots_stand("SAG-7.c87")
+   #plots_MBII()
+   plots_MDPL_replot()
 

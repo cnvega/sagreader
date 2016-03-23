@@ -18,7 +18,6 @@ def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
 
    print("### Stellar Mass Function")
 
-   Hubble_h = sagdat.readAttr('Hubble_h')
    datapath = './Data/'
   
    if redshift in [0,1,2,3]:
@@ -33,11 +32,12 @@ def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
    ob_ed = np.log10(ob_y/(ob_y-ob_e))
 
    if not readfile:
+
       if sagdat.reduced:
          BulgeMass = sagdat.readDataset("M_star_bulge")
          DiscMass = sagdat.readDataset("M_star_disk")
 
-      else :
+      else:
          BulgeMass = sagdat.readDataset("BulgeMass")
          DiscMass = sagdat.readDataset("DiscMass")
 
@@ -52,7 +52,7 @@ def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
       del StellarMass_all
 
       # Correct by h:
-      StellarMass /= Hubble_h
+      StellarMass /= un.h
       # log scale: 
       logSM = np.log10(StellarMass) 
       del StellarMass
@@ -72,7 +72,7 @@ def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
 
    if savefile:
       f = h5py.File(savefile)
-      if 'SMF' in f.keys(): del f['SMF']
+      if 'SMF/z'+str(z) in f.keys(): del f['SMF/z'+str(z)]
       f['SMF/z'+str(z)+'/bins'] = bins
       f['SMF/z'+str(z)+'/phi']   = phi
       f.close()
@@ -82,9 +82,9 @@ def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
    x = (bins[1:]+bins[:-1])/2.0
    pl.plot(x[phi>0], np.log10(phi[phi>0]), '-k', lw=2, label='SAG')
    pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='^b',
-              label="Henriques et al (2013), $z=0$")
-   pl.xlabel(r'$\log_{10}(M_{\rm stellar}[{\rm M}_\odot])$', fontsize=16)
-   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{-3} {\rm Mpc}^{-3} /\log_{10} M])$', 
+              label="Henriques et al (2013), $z="+str(z)+"$")
+   pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$', fontsize=16)
+   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{-3} {\rm Mpc}^{-3} /\log_{10} M_\star])$', 
              fontsize=16)
    pl.xlim((7,12.5))
    pl.legend(loc=3, frameon=False, fontsize=12)
@@ -103,7 +103,6 @@ def FracMorph(sagdat, outpath, savefile=None, readfile=False,
    mrange = [7,13]
    
    datapath = './Data/'
-   Hubble_h = sagdat.readAttr('Hubble_h')
 
    if not readfile:
       
@@ -138,6 +137,7 @@ def FracMorph(sagdat, outpath, savefile=None, readfile=False,
       un = sagdat.readUnits()
       BulgeMass *= un.mass.Msun
       DiscMass *= un.mass.Msun
+      Hubble_h = un.h
 
       wmass = (BulgeMass + DiscMass) > 0
 
@@ -161,6 +161,7 @@ def FracMorph(sagdat, outpath, savefile=None, readfile=False,
       irr = f['Morph/irr'][:]
       sp  = f['Morph/sp'][:]
       el  = f['Morph/el'][:]
+      Hubble_h = f['Morph/h'][:]
       f.close()
 
    if savefile:
@@ -171,6 +172,7 @@ def FracMorph(sagdat, outpath, savefile=None, readfile=False,
       f['Morph/irr'] = irr 
       f['Morph/sp']  = sp  
       f['Morph/el']  = el  
+      f['Morph/h']  = Hubble_h
       f.close()
 
    x = ((bin_tot[:-1]+bin_tot[1:])/2.)[tot > 0]
@@ -194,7 +196,7 @@ def FracMorph(sagdat, outpath, savefile=None, readfile=False,
    pl.errorbar(obs_el[0]+np.log10(Hubble_h), obs_el[1], yerr=obs_el[2], fmt="or")
    pl.errorbar(obs_irr[0]+np.log10(Hubble_h), obs_irr[1], yerr=obs_irr[2], fmt="^k")
 
-   pl.xlabel(r"$\log_{10}(M_{\rm stellar} [h^{-1} {\rm M}_\odot])$", fontsize=16)
+   pl.xlabel(r"$\log_{10}(M_\star [h^{-1} {\rm M}_\odot])$", fontsize=16)
    pl.ylabel("Fraction", fontsize=16)
    pl.xlim((8.,12.))
    pl.ylim((-0.05, 1.05))
@@ -211,7 +213,6 @@ def BHBulge(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NONE')
    from matplotlib import colors, ticker, cm
    from numpy import ma
 
-   Hubble_h = sagdat.readAttr('Hubble_h')
    datapath = './Data/'
 
    xr = [8,13]
@@ -245,13 +246,13 @@ def BHBulge(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NONE')
 
       # Units:
       un = sagdat.readUnits()
-      BulgeMass *= un.mass.Msun/Hubble_h
-      BHMass *= un.mass.Msun/Hubble_h
+      BulgeMass *= un.mass.Msun/un.h
+      BHMass *= un.mass.Msun/un.h
       
       nz = (BulgeMass>0)&(BHMass>0)
 
-      H, xedges, yedges = np.histogram2d(np.log10(BulgeMass[nz]), np.log10(BHMass[nz]), 
-                                         range=[xr,yr], bins=80)
+      H, xedges, yedges = np.histogram2d(np.log10(BulgeMass[nz]),
+                                np.log10(BHMass[nz]), range=[xr,yr], bins=80)
       del BulgeMass, BHMass
 
    else: #read histograms from file:
@@ -317,7 +318,6 @@ def TullyFisher(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NO
    from matplotlib import colors, ticker, cm
    from numpy import ma
 
-   Hubble_h = sagdat.readAttr('Hubble_h')
    datapath = './Data/'
 
    xr = [1.35,   2.8]
