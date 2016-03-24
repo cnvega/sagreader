@@ -26,19 +26,9 @@ def plots_MDPL():
    # BH-B
    SAGplots.BHBulge(data, outfolder, savefile=outdat)
 
-   # SFR density:
-   snaplist = sag.SnapList("/fast_scratch2/cnvega/MDPL/snapidzred.txt")
-   SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
-
-   # High-z SMF:
-   #data_tmp = data.select_redshift(0.99, 1.1)
-   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=1)
-
-   #data_tmp = data.select_redshift(1.99, 2.1)
-   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=2)
-
    data.clear()
 
+   # High-z SMF:
    sagfolder = "/fast_scratch3/cnvega/MDPL/SAG/SAG7.86-completed/snapshot_092"
    data = sag.SAGcollection(sagfolder, 1000.0) 
    SAGplots.SMF(data, outfolder, savefile=outdat, redshift=1)
@@ -49,6 +39,21 @@ def plots_MDPL():
    SAGplots.SMF(data, outfolder, savefile=outdat, redshift=2)
    data.clear()
 
+
+   # SFR density:
+
+   sagfolder = "/fast_scratch3/cnvega/MDPL/SAG/SAG7.86-completed"
+   data = sag.SAGcollection(sagfolder, 1000.0) 
+
+   snaplist = sag.SnapList("/fast_scratch2/cnvega/MDPL/snapidzred.txt")
+
+   SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
+
+   #data_tmp = data.select_redshift(0.99, 1.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=1)
+
+   #data_tmp = data.select_redshift(1.99, 2.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=2)
 
 
 def plots_simu():

@@ -137,7 +137,7 @@ all the stored files and returns a unique numpy array with the
 requested data. All the hdf5 files have to be added manually.
 """
 
-   def __init__(self, simname, boxSizeMpc):
+   def __init__(self, simname, boxSizeMpc, keepOpen=True):
       """ Constructor.
 
 It creates an empty collection of files. The parameter values are not used in
@@ -145,6 +145,8 @@ this class, but are useful when plotting the data.
       
 @param simname String containing a tag name for the simulation (unused).
 @param boxSizeMpc Box size of the simulation box (unused).
+@param keepOpen (optional) It controls if the hdf5 files are always opened or only
+when needed.
 
       """
       ## Reference name of the simulation.
@@ -159,6 +161,8 @@ this class, but are useful when plotting the data.
       self.boxSizeMpc = boxSizeMpc
       ## Tag indicating if the hdf5 files are in the reduced format or not.
       self.reduced = False
+      ## Tag indicating if the hdf5 file are opened only when needed or not.
+      self.keepOpen = keepOpen
 
 
    def clear(self):
@@ -170,8 +174,10 @@ It deletes all the internal lists and it closes all the loaded files.
       del self.filenames[:]
       self.nfiles = self.boxSizeMpc = 0
       self.reduced = False
-      for fsag in self.dataList:
-         fsag.close()
+      self.keepopen = True
+      if not self.keepOpen:
+         for fsag in self.dataList:
+            fsag.close()
         
 
    def addFile(self, filename):
@@ -191,7 +197,7 @@ relative.
       self.filenames.append(filename)
       self.dataList.append(sag)
       self.nfiles += 1
-     
+
       if 1 == self.nfiles:
          try:
             attr = self.dataList[0].attrs['REDUCED_HDF5']
@@ -201,6 +207,10 @@ relative.
                self.reduced = True
          except KeyError:
             pass
+      
+      if not self.keepOpen:
+         for i in range(self.nfiles):
+            self.dataList[i].close()
 
 
    def readDataset(self, dsname, idxfilter=[]):
@@ -224,15 +234,19 @@ It can be created with numpy.where(condition), for example:
 
 @return A numpy array with the requested dataset.
       """
-      for i, sag in enumerate(self.dataList):
+      for i, fname in enumerate(self.filenames):
+         if self.keepOpen: sag = self.dataList[i]
+         else: sag = h5py.File(self.filenames[i], "r")
          dsarr = np.array(sag.get(dsname))
          if None == dsarr.all():
-            print("Dataset '"+dsname+"' not present in "+self.filenames[i])
+            print("Dataset '"+dsname+"' not present in "+fname)
             return None
          if 0 == i:
             nparr = dsarr
          else:
             nparr = np.concatenate([nparr, dsarr])
+         if not self.keepOpen:
+            sag.close()
       if 0 != len(idxfilter):
          tmp = nparr[idxfilter]
          del nparr
@@ -253,13 +267,16 @@ the attribute is extracted. The first file is used as default.
 
 @return Content of the requested attribute.
       """
+      if self.keepOpen: sag = self.dataList[fnum]
+      else: sag = h5py.File(self.filenames[fnum], "r")
       try:
-         attr = self.dataList[fnum].attrs[attname]
-         return attr
+         attr = sag.attrs[attname]
       except KeyError:
          print("Attribute '"+attname+"' not present in "
                +self.filenames[fnum])
-         return None
+         attr = None
+      if not self.keepOpen: sag.close()
+      return attr
 
 
    def readUnits(self, fnum=0):
@@ -273,11 +290,13 @@ the units are extracted. The first file is used as default.
 
 @return A 'Unit' object with all the conversion constant of the loaded data.
       """
+      if self.keepOpen: sag = self.dataList[fnum]
+      else: sag = h5py.File(self.filenames[fnum], "r")
       if 0 < self.nfiles:
          if not self.reduced:
-            m_in_g = float(self.dataList[fnum].attrs["UnitMass_in_g"])
-            l_in_cm = float(self.dataList[fnum].attrs["UnitLength_in_cm"])
-            vel_in_cm_s = float(self.dataList[fnum].attrs["UnitVelocity_in_cm_per_s"])
+            m_in_g = float(sag.attrs["UnitMass_in_g"])
+            l_in_cm = float(sag.attrs["UnitLength_in_cm"])
+            vel_in_cm_s = float(sag[fnum].attrs["UnitVelocity_in_cm_per_s"])
          else:
             m_in_g = 1.989e33  # Msun
             l_in_cm = 3.085678e21  # kpc
@@ -286,9 +305,11 @@ the units are extracted. The first file is used as default.
          h = float(self.readAttr('Hubble_h'))
          
          units = Units(l_in_cm, m_in_g, vel_in_cm_s, h)
-         return units
-      else:
-         return None
+      else: 
+         units = None
+      
+      if not self.keepOpen: sag.close()
+      return units
 
 
    def datasetList(self, fnum=0, group="/"):
@@ -303,13 +324,16 @@ the dataset keys are extracted. The first file is used as default.
 
 @return A List with all the names of the datasets found. 
       """
+      if self.keepOpen: sag = self.dataList[fnum]
+      else: sag = h5py.File(self.filenames[fnum], "r")
       ks = []
-      for tag in self.dataList[fnum][group].keys():
-         if type(self.dataList[fnum][group+tag]) is h5py._hl.dataset.Dataset:
+      for tag in sag[group].keys():
+         if type(sag[group+tag]) is h5py._hl.dataset.Dataset:
             ks.append(group+tag)
-         elif type(self.dataList[fnum][group+tag]) is h5py._hl.group.Group:
+         elif type(sag[group+tag]) is h5py._hl.group.Group:
             tmp = self.datasetList(fnum, group=group+tag+"/")
             ks += tmp
+      if not self.keepOpen: sag.close()
       return ks
 
 
@@ -325,14 +349,17 @@ It returns the internal location of the galaxies identified by a list of ids
 galaxies. An 'indexes' array with the location of the galaxies in their corresponding
 files, and a 'boxes' array indicating the file to which each galaxy belongs. 
       """
+      if self.keepOpen: sag = self.dataList[fnum]
+      else: sag = h5py.File(self.filenames[fnum], "r")
       if type(ids) != list: ids = [ids]
       idxs = []
       boxes = []
       for i in range(self.nfiles):
-         dset = self.dataList[i][dsname]
+         dset = sag[dsname]
          tmp = np.where(np.in1d(dset, ids, assume_unique=True))[0]
          idxs += tmp.tolist()
          for _ in range(len(tmp)): boxes.append(i)
+      if not self.keepOpen: sag.close()
       return np.array(idxs), np.array(boxes) 
   
 
@@ -353,8 +380,8 @@ the datasets are preserved as tags of the dictionary.
          dslist = self.datasetList()
       gal = {}
       for dstag in dslist:
-         if type(self.dataList[0][dstag]) is h5py._hl.dataset.Dataset:
-            gal[dstag] = self.readDataset(dstag)
+         #if type(self.dataList[0][dstag]) is h5py._hl.dataset.Dataset:
+         gal[dstag] = self.readDataset(dstag)
       return gal
 
 
@@ -376,19 +403,23 @@ the datasets are preserved as tags of the dictionary.
       """
       if dslist == 'all':
          dslist = self.datasetList()
-         dslist.remove('Histories/DeltaT_List')
+         if not self.reduced:
+            dslist.remove('Histories/DeltaT_List')
       # retrieve indexes of the galaxies:
       idname = 'GalaxyID' if self.reduced else 'UID'
       idxs, boxes = self._gal_idxs(ids, idname)
       gal = {}
+      if self.keepOpen: sag = self.dataList[0]
+      else: sag = h5py.File(self.filename[0], "r")
       for dstag in dslist:
-         if type(self.dataList[0][dstag]) is h5py._hl.dataset.Dataset:
-            dims = self.dataList[0][dstag].shape[1]
-            l = np.zeros((len(idxs),dims), dtype=self.dataList[0][dstag].dtype)
+         if type(sag[dstag]) is h5py._hl.dataset.Dataset:
+            dims = sag[dstag].shape[1]
+            l = np.zeros((len(idxs),dims), dtype=sag[dstag].dtype)
             for i in range(self.nfiles):
                l_idx = (boxes == i)
-               l[l_idx] = self.dataList[i][dstag][:][idxs[l_idx]]
+               l[l_idx] = sag[dstag][:][idxs[l_idx]]
             gal[dstag] = l
+      if not self.keepOpen: sag.close()
       return gal
 
 
@@ -403,7 +434,7 @@ and return the data from different redshifts or just the lowest one. A z range c
 specified in each case.
    """
 
-   def __init__(self, filename, boxSizeMpc=0):
+   def __init__(self, filename, boxSizeMpc=0, keepOpen=True):
       """ It creates a new catalog collection.
 
 It reads a specific directory and creates a collection of SAG outputs classified and
@@ -419,6 +450,8 @@ different folders named 'snapshot_NNN', where NNN is the snapshot number.
 in omitted, it is loaded by default a file called 'simdata.txt' 
 from the catalogs folder. The file must contain just two lines: a tag name of the
 simulation and its box size in Mpc.
+@param keepOpen (optional) It controls if the hdf5 files are always opened or only
+when needed.
       """
 
       ## List with the 'SAGdata' objects for each redshift/snapshot.
@@ -435,6 +468,8 @@ simulation and its box size in Mpc.
       self.boxSizeMpc = 0
       ## Index in which the lowest redsfhit is located.
       self.zminidx    = -1
+      ## Tag indicating if the hdf5 file are opened only when needed or not.
+      self.keepOpen = keepOpen
      
       if 0 != boxSizeMpc:
          simname = 'SAG_sim'
@@ -462,13 +497,14 @@ simulation and its box size in Mpc.
                   filesindir += 1
 
                   if filesindir == 1: ## add a new redshift to the collection:
-                     self.dataList.append(SAGdata(simname, self.boxSizeMpc))
+                     self.dataList.append(SAGdata(simname, self.boxSizeMpc,
+                                                  self.keepOpen))
                      self.snaptag.append(snap)
                      self.nfiles.append(0)
                      self.nz += 1
                   
                   sagname = filename+'/'+name+'/'+h5name
-                  print('Opening file '+sagname)
+                  print('Loading file '+sagname)
                   self.dataList[self.nz-1].addFile(sagname)
                   self.nfiles[self.nz-1] += 1
       # and the corresponding redshifts: 
@@ -490,14 +526,15 @@ simulation and its box size in Mpc.
                try:
                   idx = self.snaptag.index(snap)
                except ValueError:
-                  self.dataList.append(SAGdata(simname, self.boxSizeMpc))
+                  self.dataList.append(SAGdata(simname, self.boxSizeMpc,
+                                               self.keepOpen))
                   self.snaptag.append(snap)
                   self.nfiles.append(0)
                   idx = self.nz
                   self.nz += 1
 
                sagname = filename+'/'+name
-               print('Opening file '+sagname)
+               print('Loading file '+sagname)
                self.dataList[idx].addFile(sagname)
                self.nfiles[idx] += 1
   
