@@ -79,8 +79,11 @@ Positions_in_mpc   = positions*un.length.Mpc
 This four parameters are needed.
 
 @param length_in_cm: length conversion constant in cm
+
 @param mass_in_gr: mass conversion constant in gr
+
 @param vel_in_cm_per_s: velocity conversion constant in cm_s
+
 @param h: Hubble constant in units of 100 km_s_Mpc
       """
 
@@ -129,24 +132,26 @@ A KeyError is raised when the tag is not found.
 
 
 class SAGdata:
-   """ One snapshot SAG output containing multiple files/boxes.
+   """ SAG output containing multiple files/boxes of one snapshot.
 
 The class 'SAGdata' stores a collection of hdf5 output files
 created by the SAG code. It can extract a particular array from
-all the stored files and returns a unique numpy array with the 
+all the stored files and it returns an unique numpy array with the 
 requested data. All the hdf5 files have to be added manually.
 """
 
    def __init__(self, simname, boxSizeMpc, keepOpen=True):
       """ Constructor.
 
-It creates an empty collection of files. The parameter values are not used in
-this class, but are useful when plotting the data.
+It creates an empty collection of files. The required parameter values
+are not used in this class, but are useful when plotting the data.
       
 @param simname String containing a tag name for the simulation (unused).
+
 @param boxSizeMpc Box size of the simulation box (unused).
-@param keepOpen (optional) It controls if the hdf5 files are always opened or only
-when needed.
+
+@param keepOpen (optional) It controls the accessibility of the hdf5
+files by controlling if they are always opened or only when needed.
 
       """
       ## Reference name of the simulation.
@@ -169,22 +174,24 @@ when needed.
       """ Object cleaner.
 
 It deletes all the internal lists and it closes all the loaded files.
+The constructor arguments are preserved.
       """
-      self.simname = ""
+      #self.simname = ""
       del self.filenames[:]
-      self.nfiles = self.boxSizeMpc = 0
+      self.nfiles = 0
+      #self.boxSizeMpc = 0
       self.reduced = False
-      self.keepopen = True
-      if not self.keepOpen:
+      if self.keepOpen:
          for fsag in self.dataList:
             fsag.close()
+      #self.keepopen = True
         
 
    def addFile(self, filename):
       """ Add one file to the object.
 
-It adds and opens one hdf5 file to the internal lists. An Input/Output error is
-raised if the file cannot be loaded.
+It adds one hdf5 file to the internal lists. An Input/Output error is
+raised if the file cannot be opened.
 
 @param filename Name of the file to be loaded. The path can be absolute or
 relative.
@@ -195,12 +202,11 @@ relative.
          print("Cannot load file: '"+filename+"'")
          return
       self.filenames.append(filename)
-      self.dataList.append(sag)
       self.nfiles += 1
 
       if 1 == self.nfiles:
          try:
-            attr = self.dataList[0].attrs['REDUCED_HDF5']
+            attr = sag.attrs['REDUCED_HDF5']
             if type(attr) is np.bytes_:
                attr = attr.decode()
             if 'YES' == attr:
@@ -208,10 +214,10 @@ relative.
          except KeyError:
             pass
       
-      if not self.keepOpen:
-         for i in range(self.nfiles):
-            self.dataList[i].close()
-
+      if self.keepOpen:
+         self.dataList.append(sag)
+      else:
+         sag.close()
 
    def readDataset(self, dsname, idxfilter=[]):
       """ Dataset reader.
@@ -221,8 +227,10 @@ if it exists in all loaded SAG files. It creates a concatenated array
 considering all the files.
 
 @param dsname String with name of the desired dataset.
-@param idxfilter (optional) numpy array for filtering the requested data. 
-It can be created with numpy.where(condition), for example:
+
+@param idxfilter (optional) A numpy array for filtering the requested 
+data in the first index of the array. It can be created with
+numpy.where(condition), for example:
 
 > types = d.readDataset("Type")
 
@@ -258,10 +266,11 @@ It can be created with numpy.where(condition), for example:
    def readAttr(self, attname, fnum=0):
       """ Attribute reader.
 
-It returns the value of the requested attribute from a particular
+It returns the content of the requested attribute from a particular
 file of the list. A KeyError is raised if not found.
 
 @param attname String with the name of the desired attribute. 
+
 @param fnum (optional) File number, starting from zero, from which
 the attribute is extracted. The first file is used as default.
 
@@ -320,6 +329,7 @@ file.
 
 @param fnum (optional) File number, starting from zero, from which
 the dataset keys are extracted. The first file is used as default.
+
 @param group (optional) Group in the hdf5 hierarchy. The group is used as default.
 
 @return A List with all the names of the datasets found. 
@@ -328,12 +338,15 @@ the dataset keys are extracted. The first file is used as default.
       else: sag = h5py.File(self.filenames[fnum], "r")
       ks = []
       for tag in sag[group].keys():
-         if type(sag[group+tag]) is h5py._hl.dataset.Dataset:
+         if isinstance(sag[group+tag], h5py._hl.dataset.Dataset):
             ks.append(group+tag)
-         elif type(sag[group+tag]) is h5py._hl.group.Group:
+         elif isinstance(sag[group+tag], h5py._hl.group.Group):
             tmp = self.datasetList(fnum, group=group+tag+"/")
             ks += tmp
       if not self.keepOpen: sag.close()
+      #deleting the initial '/':
+      for i in range(len(ks)):
+         if ks[i][0] == '/': ks[i] = ks[i][1:]
       return ks
 
 
@@ -343,23 +356,24 @@ the dataset keys are extracted. The first file is used as default.
 It returns the internal location of the galaxies identified by a list of ids
 
 @param ids A unique or a list of galaxy IDs to search.
+
 @param dsname The name of the dataset in which the galaxy ids are stored.
 
 @return (idxs, boxes) It returns two numpy arrays specifying the location of the
 galaxies. An 'indexes' array with the location of the galaxies in their corresponding
 files, and a 'boxes' array indicating the file to which each galaxy belongs. 
       """
-      if self.keepOpen: sag = self.dataList[fnum]
-      else: sag = h5py.File(self.filenames[fnum], "r")
       if type(ids) != list: ids = [ids]
       idxs = []
       boxes = []
       for i in range(self.nfiles):
+         if self.keepOpen: sag = self.dataList[i]
+         else: sag = h5py.File(self.filenames[i], "r")
          dset = sag[dsname]
          tmp = np.where(np.in1d(dset, ids, assume_unique=True))[0]
          idxs += tmp.tolist()
          for _ in range(len(tmp)): boxes.append(i)
-      if not self.keepOpen: sag.close()
+         if not self.keepOpen: sag.close()
       return np.array(idxs), np.array(boxes) 
   
 
@@ -380,7 +394,7 @@ the datasets are preserved as tags of the dictionary.
          dslist = self.datasetList()
       gal = {}
       for dstag in dslist:
-         #if type(self.dataList[0][dstag]) is h5py._hl.dataset.Dataset:
+         if dstag[0] == '/': dstag = dstag[1:]
          gal[dstag] = self.readDataset(dstag)
       return gal
 
@@ -394,6 +408,7 @@ with the desired ids.
 WARNING: This method could be time-consuming.
 
 @param ids A unique or a list of galaxy IDs to search.
+
 @param dslist (optional) A string or a list of strings with the names of the datasets
 to be included. The default behavior is to include all the datasets found in the
 files.
@@ -406,20 +421,24 @@ the datasets are preserved as tags of the dictionary.
          if not self.reduced:
             dslist.remove('Histories/DeltaT_List')
       # retrieve indexes of the galaxies:
-      idname = 'GalaxyID' if self.reduced else 'UID'
+      idname = 'GalaxyStaticID' if self.reduced else 'UID'
       idxs, boxes = self._gal_idxs(ids, idname)
       gal = {}
-      if self.keepOpen: sag = self.dataList[0]
-      else: sag = h5py.File(self.filename[0], "r")
+      if self.keepOpen: s0 = self.dataList[0]
+      else: s0 = h5py.File(self.filenames[0], "r")
       for dstag in dslist:
-         if type(sag[dstag]) is h5py._hl.dataset.Dataset:
-            dims = sag[dstag].shape[1]
-            l = np.zeros((len(idxs),dims), dtype=sag[dstag].dtype)
-            for i in range(self.nfiles):
-               l_idx = (boxes == i)
+         dims = s0[dstag].shape[1]
+         l = np.zeros((len(idxs),dims), dtype=s0[dstag].dtype)
+         for i in range(self.nfiles):
+            if self.keepOpen: sag = self.dataList[i]
+            else: sag = h5py.File(self.filenames[i], "r")
+            l_idx = (boxes == i)
+            if len(idxs[l_idx] > 0):
                l[l_idx] = sag[dstag][:][idxs[l_idx]]
-            gal[dstag] = l
-      if not self.keepOpen: sag.close()
+            if not self.keepOpen: sag.close()
+         if dstag[0] == '/': dstag = dstag[1:]
+         gal[dstag] = l
+      if not self.keepOpen: s0.close()
       return gal
 
 
@@ -427,11 +446,11 @@ class SAGcollection():
    """ A collection of SAG outputs containing multiple boxes and redshifts. 
 
 The class 'SAGcollection' is a compound of 'SAGdata' objects classified by
-their redshifts. It behaves as a 'SAGdata' object but included the redshift
+their redshifts. It behaves as a 'SAGdata' object but it considers the redshift
 management of the data, including the dataset and galaxy requests. The 'multisnap'
-flag included as argument in most of the method controls if the outputs must extract
-and return the data from different redshifts or just the lowest one. A z range can be
-specified in each case.
+flag included as argument in most of the methods controls if the outputs must extract
+and return the data from different redshifts or just the lowest one. A redshift 
+range can be specified in each case.
    """
 
    def __init__(self, filename, boxSizeMpc=0, keepOpen=True):
@@ -442,14 +461,15 @@ ordered by their redshifts.
 
 @param filename Input directory in which the SAG files are looked and loaded.
 Those hdf5 files can share the same directory in which case the 
-classification and ordering is made by
-reading the 'Redshift' attribute of each one, or can be separated by
-redshift/snapshot in
+classification and ordering is made by reading the 'Redshift' 
+attribute of each one, or can be separated by redshift/snapshot in
 different folders named 'snapshot_NNN', where NNN is the snapshot number.
+
 @param boxSizeMpc (optional) The box size of the simulation in Mpc. If this argument
-in omitted, it is loaded by default a file called 'simdata.txt' 
+in omitted, a file called 'simdata.txt' is loaded by default 
 from the catalogs folder. The file must contain just two lines: a tag name of the
 simulation and its box size in Mpc.
+
 @param keepOpen (optional) It controls if the hdf5 files are always opened or only
 when needed.
       """
@@ -562,12 +582,14 @@ It deletes all the internal lists and it closes all the loaded files.
    
 
    def _lookup_z(self, zlow, zhigh):
-      """ Search a redshift range.
+      """ Search for a redshift range.
 
 It searches for the loaded redshifts which are in the specified range.
 
 @param zlow Lower redshift of the range.
+
 @param zhigh Higher redshift of the range.
+
 @return A list with the redshifts of the collection that are in the
 range zlow <= Z <= zhigh.
       """
@@ -578,7 +600,19 @@ range zlow <= Z <= zhigh.
       return zl
 
 
-   def select_redshift(zmin, zmax):
+   def select_redshift(self, zmin, zmax):
+      """ Get SAGdata with specific redshift.
+
+It creates a reference to the 'SAGdata' object stored in the collection which
+redshift matches within the specified range. If more than one redshift is found 
+in the range, the lowest is chosen.
+
+@param zmin Minimum redshift of the search range.
+
+@param zmax Maximum redshift of the search range.
+
+@return A 'SAGdata' reference with the requested data.
+      """
       zm = min(self._lookup_z(zmin, zmax))
       idx = self.redshift.index(zm)
       return self.dataList[idx]
@@ -586,9 +620,24 @@ range zlow <= Z <= zhigh.
 
 
    def readDataset(self, dsname, multiSnaps=False, zrange=None, **kwargs):
-      """
-      It searches for an unique or a set of redshifts or boxes and returns the 
-      requested datasets.
+      """ Dataset reader
+
+It returns a unique numpy array of the requested dataset only
+if it exists in all the corresponding SAG files, creating a concatenated 
+array.
+
+@param dsname String with name of the desired dataset.
+
+@param multiSnaps (optional) It controls if multiple redshift snapshots are
+considered to be included in the array.
+
+@param zrange (optional) Redshift range from which the data is extracted. If
+multiSnaps=False and more than one redshift is found in the range, 
+the lowest redshift is chosen.
+
+@param kwargs Set of optinal parameters of the SAGdata.readDataset method.
+
+@return A numpy array with the requested dataset.
       """
       for key in kwargs.keys():
          if key not in ['idxfilter']:
@@ -638,28 +687,66 @@ range zlow <= Z <= zhigh.
    # All the files should have the same attributes and units, so these return
    # the ones found in the first file at the lowest redshift.
    def readAttr(self, attname):
-      """
-      It returns a requested attribute.
+      """ Attribute reader.
+
+It returns the content of the requested attribute, which is extracted from the 
+first file of the SAGdata object with lowest redshift. 
+A KeyError is raised if not found.
+
+@param attname String with the name of the desired attribute. 
+
+@return Content of the requested attribute.
       """
       return self.dataList[self.zminidx].readAttr(attname)
-   
+  
+
    def readUnits(self):
-      """ 
-      It return an 'Units' object with the unit conversions of the catalog.
+      """ Unit reader.
+
+It returns an instance of the 'Units' class, with all the unit conversions
+of the data. It is extracted from the first file of the SAGdata object with 
+lowest redshift. 
+
+@return A 'Unit' object with all the conversion constant of the catalog.
       """
       return self.dataList[self.zminidx].readUnits() 
 
+
    def datasetList(self):
-      """
-      It returns the dataset list of the files, following the groups recursively.
+      """ Get the list of datasets.
+
+It recursively extracts the list of datasets found in the first 
+file of the SAGdata object with lowest redshift.
+
+@return A List with all the names of the datasets found. 
       """
       return self.dataList[self.zminidx].datasetList()
 
 
    def getGalaxies_by_ids(self, ids, dslist='all', multiSnaps=False, zrange=None):
-      """
-      It returns a dictionary with the different datasets for all the requested
-      galaxies.
+      """ Retrieve galaxies by their ids.
+
+It creates a dictionary with all the requested datasets including ONLY the galaxies
+with the desired ids. A 'redshift' array is included in the dictionary if multiple
+snapshots are requested.
+
+WARNING: This method could be time-consuming.
+
+@param ids A unique or a list of galaxy IDs to search.
+
+@param dslist (optional) A string or a list of strings with the names of the datasets
+to be included. The default behavior is to include all the datasets found in the
+files.
+
+@param multiSnaps (optional) It controls if multiple redshift snapshots are
+considered.
+
+@param zrange (optional) Redshift range from which the data is extracted. If
+multiSnaps=False and more than one redshift is found in the range, 
+the lowest redshift is chosen.
+
+@return A dictionary with one numpy array for each requested dataset. The names of
+the datasets are preserved as tags of the dictionary.
       """
       if multiSnaps: print("Warning: requesting multiple snaps!")
 
@@ -700,7 +787,7 @@ range zlow <= Z <= zhigh.
          gtmp = self.dataList[i].getGalaxies_by_ids(ids, dslist)
          if 0 == gal['ngal']:
             gal.update(gtmp)
-            gal['ngal'] += len(gal[dslist[0]])
+            gal['ngal'] += len(gtmp[dslist[0]])
             if len(iarr) > 1:
                gal['redshift'] = np.repeat(self.redshift[i],len(gal[dslist[0]]))
          else:
@@ -709,16 +796,37 @@ range zlow <= Z <= zhigh.
             gal['ngal'] += len(gtmp[dslist[0]])
             tmp = np.repeat(self.redshift[i],len(gtmp[dslist[0]]))
             gal['redshift'] = np.concatenate([gal['redshift'], tmp])
-
+         
+      gal['redshift'] = gal['redshift'].reshape((len(gal['redshift']),1))
       return gal
       
       
 class SnapList():
+   """ Scales list
+
+A class for loading, ordering and managing a scales (and redshift) list,
+according to their corresponding snapshot numbers.
+   """
    def __init__(self, fname):
-      f = open(fname, "r")
+      """ Constructor
+
+It reads a scales/redshifts list from a file, which can be in any of the 
+two most used formats: i) a single column with the scale values in ascending 
+order, one line per snapshot; or ii) a five column file in which the first three
+columns are the snapshot number, the scale and the redshift (the last two are
+omitted here).
+
+@param fname Name of the file for loading the list.
+
+@return A SnapList object with the loaded list.
+      """
+      ## List of snapshot numbers.
       self.snap = []
+
       scales = []
       redshifts = []
+
+      f = open(fname, "r")
       snp = 0
       for line in f.readlines():
          if line[0] == '#': continue
@@ -734,16 +842,31 @@ class SnapList():
          self.snap.append(int(snap))
          scales.append(float(a))
          redshifts.append(float(z))
+
+      ## List of scale factors.
       self.scales = np.array(scales)
+      ## List of redshifts.
       self.redshifts = np.array(redshifts)
+
+
    def __getitem__(self, k):
+      """ Get item 
+
+The squared bracket operator receives the snapshot number as argument and return a
+tuple with the corresponding scale and redshift.
+
+@param k Snapshot number
+
+@return (a, z) 
+      """
       idx = self.snap.index(k)
       return self.scales[idx], self.redshifts[idx]
        
 
 class SAGreader():
-   """
-   Input SAG Mock
+   """ Input SAG Mock 
+
+Dummy class used as reference for other external catalogs.
    """
    def __init__(self, filename=''):
       self.catalog = SAGcollection(filename)

@@ -1,4 +1,14 @@
 #! /usr/bin/env python
+# coding: utf-8
+
+## @file SAGplots_evol.py
+## @author Cristian A. Vega Martínez <cnvega(at)fcaglp.unlp.edu.ar>
+##
+## @brief Set of scientific control plots for SAG outputs.
+##
+## A collection of pre-defined scientific control plots to be
+## applied to the SAG hdf5 outputs through the SAGreader module.
+
 
 import sys
 import matplotlib as mpl
@@ -14,16 +24,46 @@ from matplotlib import rcParams
 
 import SAGreader
 
-def SFRvol_z(sagdat, snaplist, outpath, savefile=None, readfile=False, zrange=[0,8]):
+def SFRvol_z(sagdat, snaplist, outpath, savefile=None, readfile=False, 
+             zrange=[0,8], getPlot=False):
+   """ Star formation rate density
+
+Routine for generating a star formation rate density evolution in redshift 
+plot. An alternative redshift range can be selected.
+
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set. If SAGreader.SAGdata is used, a standard SAG HDF5
+output at z=0 including the historical SFR dataset must be loaded.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param zrange (optional) Redshift range.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
 
    print("### Star formation rate density vs redshift")
 
    datapath = './Data/'
-   un = sagdat.readUnits()
    zmin = min(zrange)
    zmax = max(zrange)
 
    if not readfile:
+
+      un = sagdat.readUnits()
 
       if type(sagdat) is SAGreader.SAGdata:
          isReduced = sagdat.reduced
@@ -113,9 +153,13 @@ def SFRvol_z(sagdat, snaplist, outpath, savefile=None, readfile=False, zrange=[0
                fontsize=16)
    #pl.xlim((zmin, zmax))
    pl.legend(loc=3, frameon=False, fontsize=12)
-   #pl.xscale('log')
+   pl.xscale('symlog')
+   ticks = [0,0.5,1,1.5,2,4,6,8]
+   pl.xticks(ticks, ticks)
    pl.tight_layout()
-   pl.savefig(outpath+'/SFRdensity_z.eps')
-   pl.clf()
+   if outpath: pl.savefig(outpath+'/SFRdensity_z.eps')
    print("Done!") 
+   if getPlot: return pl
+   pl.clf()
+   return
 
