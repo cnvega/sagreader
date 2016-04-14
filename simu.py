@@ -115,10 +115,7 @@ def plots_MBII():
 
 def plots_stand(modelid):
    
-   nboxes = 64
-   zsnap = {0:"099"}
-   
-   outfolder = "plots/"+modelid
+   outfolder = "plots/Stand/"+modelid
    outdat = outfolder+"/data.h5"
 
    if not os.path.exists(outfolder):
@@ -126,16 +123,19 @@ def plots_stand(modelid):
 
    salidaSAM = "/data/Stand/SalidaSAM/"+modelid+"/Subgalaxies"
 
-   #data = sag.SAGdata("Stand", 150.0)
+   data = sag.SAGcollection(salidaSAM, boxSizeMpc=150.0, keepOpen=False)
 
-   #for box in range(1,nboxes+1):
-   #   infile = salidaSAM+"gal_itf_"+zsnap[0]+"_"+modelid+"_BOX_"+str(box).zfill(3)+".hdf5"
-   #   data.addFile(infile)
-
-   data = sag.SAGcollection(salidaSAM, boxSizeMpc=150.0)
-
-   # 1st: smf
+   # 1st: smfs
    SAGplots.SMF(data, outfolder, savefile=outdat)
+
+   #data_tmp = data.select_redshift(0.98, 1.05)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=1)
+
+   #data_tmp = data.select_redshift(1.98, 2.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=2)
+
+   #data_tmp = data.select_redshift(2.98, 3.1)
+   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=3)
 
    # 2nd: morph
    SAGplots.FracMorph(data, outfolder, savefile=outdat)
@@ -145,13 +145,20 @@ def plots_stand(modelid):
 
    # T-F
    SAGplots.TullyFisher(data, outfolder, savefile=outdat)
+   
+   # SFR density:
+
+   snaplist = sag.SnapList("/data/Stand/outputs_STAND.dat")
+
+   SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
 
    data.clear()
 
 
 if __name__ == '__main__':
    #plots_simu()
-   #plots_stand("SAG-7.c87")
+   #plots_stand("SAG-7.96-c05abr16")
+   plots_stand("SAG7-c21May15-b")
    #plots_MBII()
-   plots_MDPL_replot()
+   #plots_MDPL_replot()
 

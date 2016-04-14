@@ -1,4 +1,14 @@
 #! /usr/bin/env python
+# coding: utf-8
+
+## @file SAGplots.py
+## @author Cristian A. Vega Martínez <cnvega(at)fcaglp.unlp.edu.ar>
+##
+## @brief Set of scientific control plots for SAG outputs.
+##
+## A collection of pre-defined scientific control plots to be
+## applied to the SAG hdf5 outputs through the SAGreader module.
+
 
 import sys
 import matplotlib as mpl
@@ -12,10 +22,37 @@ import h5py
 
 from matplotlib import rcParams
 
-#rcParams['font.size'] = 16
 
-def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
+def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0,
+        getPlot=False):
+   """ Stellar Mass function
 
+Routine for generating a stellar mass function plot. It can be used
+indistinctly for the redshifts 0, 1, 2 and 3.
+
+@param sagdat Input SAGreader.SAGdata object data previously loaded
+with the corresponding redshift. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param redshift (optional) Integer value indicating the redshift of 
+the loaded data. Is can be either 0, 1, 2 or 3, and is used for loading
+the corresponding observational data.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
    print("### Stellar Mass Function")
 
    datapath = './Data/'
@@ -91,12 +128,55 @@ def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0):
    #pl.axis('scaled')
    pl.tight_layout()
    pl.savefig(outpath+'/SMF_z'+str(z)+'.eps')
+   print("Done!")
+   if getPlot: return pl
    pl.clf()
-   print("Done!") 
+   return 
+
 
 def FracMorph(sagdat, outpath, savefile=None, readfile=False,
-               threshSE=0.85, threshIS=0.0, SEDmagfilter='NONE'):
-   
+              threshSE=0.85, threshIS=0.0, SEDmagfilter='NONE',
+              getPlot=False):
+   """ Galaxy morphological fraction 
+
+Routine for generating galaxy morphological fraction plot at z=0,
+by comparing the mass fractions of galaxy components and applying 
+threshold to classify them. A 'V' magnitude filter is tried first
+for selecting the galaxies before the calculation, by loading two known 
+datasets or the defined by the SEDmagfilter option. If none of them is 
+found, all the galaxies are included in the selection. 
+
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param threshSE (optional) Bulge to total mass ratio threshold to
+classify elliptical and disc galaxies. The default value (0.85) is used
+if omitted.
+
+@param threshIS (optional) Bulge to total mass ratio threshold to
+classify irregular and disc galaxies. The default value (0.0) is used
+if omitted. 
+
+@param SEDmagfilter (optional) Alternative magnitude filter (inside the
+'SED/Magnitudes' group) for being used for filtering the galaxies.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """ 
    print("### Morphological Fraction")
 
    nbins = 40
@@ -202,12 +282,45 @@ def FracMorph(sagdat, outpath, savefile=None, readfile=False,
    pl.ylim((-0.05, 1.05))
    pl.tight_layout()
    pl.savefig(outpath+'/FracMorph.eps')
-   pl.clf()
    print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   
 
+def BHBulge(sagdat, outpath, savefile=None, readfile=False, 
+            SEDmagfilter='NONE', getPlot=False):
+   """ Black hole mass vs bulge mass relationship.  
 
-def BHBulge(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NONE'):
+Routine for generating the super-massive black hole mass versus
+bulge mass relationship plot at z=0.
+A 'V' magnitude filter is tried first
+for selecting the galaxies before the calculation, by loading two known 
+datasets or the defined by the SEDmagfilter option. If none of them is 
+found, all the galaxies are included in the selection. 
 
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param SEDmagfilter (optional) Alternative magnitude filter (inside the
+'SED/Magnitudes' group) for being used for filtering the galaxies.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """ 
    print("### Black hole vs Bulge mass relationship")
 
    from matplotlib import colors, ticker, cm
@@ -308,12 +421,44 @@ def BHBulge(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NONE')
    pl.tight_layout()
 
    fig.savefig(outpath+"/BHBulge.eps")
-   pl.clf()
    print("Done!")
+   if getPlot: return pl
+   pl.clf()
    
 
-def TullyFisher(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NONE'):
+def TullyFisher(sagdat, outpath, savefile=None, readfile=False, 
+                SEDmagfilter='NONE', getPlot=False):
+   """ Tully-Fisher relationship.  
 
+Routine for generating the Tully-Fisher relationship plot at z=0.
+A 'V' magnitude filter is tried first
+for selecting the galaxies before the calculation, by loading two known 
+datasets or the defined by the SEDmagfilter option. If none of them is 
+found, all the galaxies are included in the selection. 
+
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param SEDmagfilter (optional) Alternative magnitude filter (inside the
+'SED/Magnitudes' group) for being used for filtering the galaxies.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """ 
    print("### Tully Fisher relationship")
    from matplotlib import colors, ticker, cm
    from numpy import ma
@@ -431,7 +576,8 @@ def TullyFisher(sagdat, outpath, savefile=None, readfile=False, SEDmagfilter='NO
    pl.tight_layout()
 
    fig.savefig(outpath+"/TullyFisher.eps")
-   pl.clf()
    print("Done!")
+   if getPlot: return pl
+   pl.clf()
    
    
