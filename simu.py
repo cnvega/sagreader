@@ -157,8 +157,7 @@ def plots_stand(modelid):
 
 if __name__ == '__main__':
    #plots_simu()
-   #plots_stand("SAG-7.96-c05abr16")
-   plots_stand("SAG7-c21May15-b")
+   plots_stand("SAG-7.96-c05abr16")
    #plots_MBII()
    #plots_MDPL_replot()
 
