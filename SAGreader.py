@@ -207,7 +207,9 @@ relative.
       if 1 == self.nfiles:
          try:
             attr = sag.attrs['REDUCED_HDF5']
-            if type(attr) is np.bytes_:
+            if isinstance(attr, np.bytes_):
+               attr = attr.decode()
+            elif isinstance(attr, bytes): 
                attr = attr.decode()
             if 'YES' == attr:
                self.reduced = True
@@ -305,7 +307,7 @@ the units are extracted. The first file is used as default.
          if not self.reduced:
             m_in_g = float(sag.attrs["UnitMass_in_g"])
             l_in_cm = float(sag.attrs["UnitLength_in_cm"])
-            vel_in_cm_s = float(sag[fnum].attrs["UnitVelocity_in_cm_per_s"])
+            vel_in_cm_s = float(sag.attrs["UnitVelocity_in_cm_per_s"])
          else:
             m_in_g = 1.989e33  # Msun
             l_in_cm = 3.085678e21  # kpc
