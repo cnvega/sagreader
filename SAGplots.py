@@ -3,6 +3,7 @@
 
 ## @file SAGplots.py
 ## @author Cristian A. Vega Martínez <cnvega(at)fcaglp.unlp.edu.ar>
+## @copyright Copyright © 2016 Cristian A. Vega M.
 ##
 ## @brief Set of scientific control plots for SAG outputs.
 ##
