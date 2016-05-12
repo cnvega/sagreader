@@ -3,6 +3,7 @@
 
 ## @file SAGreader.py
 ## @author Cristian A. Vega Martínez <cnvega(at)fcaglp.unlp.edu.ar>
+## @copyright Copyright © 2016 Cristian A. Vega M.
 ##
 ## @brief SAG output reader module.
 ##
@@ -66,7 +67,7 @@ conversion by using the unit() method.
 
 Example:
 
-un = Unit(l_cm, m_gr, vel_cm_s)
+un = Unit(l_cm, m_gr, vel_cm_s, h)
 
 StellarMass_in_gr = stellarMass*un.mass.gr
 
@@ -78,13 +79,13 @@ Positions_in_mpc   = positions*un.length.Mpc
       
 This four parameters are needed.
 
-@param length_in_cm: length conversion constant in cm
+@param length_in_cm Length conversion constant in cm
 
-@param mass_in_gr: mass conversion constant in gr
+@param mass_in_gr Mass conversion constant in gr
 
-@param vel_in_cm_per_s: velocity conversion constant in cm_s
+@param vel_in_cm_per_s Velocity conversion constant in cm_s
 
-@param h: Hubble constant in units of 100 km_s_Mpc
+@param h Hubble Constant in units of 100 km_s_Mpc
       """
 
       self.mass   = _UnitMass(mass_in_gr)
@@ -93,6 +94,7 @@ This four parameters are needed.
       self.time   = _UnitTime(length_in_cm/vel_in_cm_per_s)
       self.h = h
 
+   
    def unit(self, unit_tag):
       """ Get conversion factor from tag.
 
@@ -518,7 +520,7 @@ when needed.
                   # This is a SAG file!:
                   filesindir += 1
 
-                  if filesindir == 1: ## add a new redshift to the collection:
+                  if filesindir == 1: # add a new redshift to the collection:
                      self.dataList.append(SAGdata(simname, self.boxSizeMpc,
                                                   self.keepOpen))
                      self.snaptag.append(snap)
