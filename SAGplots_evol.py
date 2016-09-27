@@ -16,14 +16,19 @@ import matplotlib as mpl
 
 mpl.use('Agg')
 
-import matplotlib.pylab as pl
+import matplotlib.pyplot as pl
 import numpy as np
 import math
 import h5py
 
-from matplotlib import rcParams
-
 import SAGreader
+
+
+def set_style_talk():
+   mpl.rcParams['figure.figsize'] = (6,6)
+   mpl.rcParams['font.size'] = 16
+   mpl.rcParams['legend.fontsize'] = 12
+   mpl.rcParams['legend.frameon'] = False
 
 def SFRvol_z(sagdat, snaplist, outpath, savefile=None, readfile=False, 
              zrange=[0,8], getPlot=False):
@@ -66,9 +71,9 @@ clearing the plot figure.
 
       un = sagdat.readUnits()
 
-      if type(sagdat) is SAGreader.SAGdata:
+      if isinstance(sagdat, SAGreader.SAGdata):
          isReduced = sagdat.reduced
-      elif type(sagdat) is SAGreader.SAGcollection:
+      elif isinstance(sagdat, SAGreader.SAGcollection):
          isReduced = sagdat.dataList[sagdat.zminidx].reduced
 
       # 1) Standard outputs:
@@ -88,12 +93,12 @@ clearing the plot figure.
          del BulgeMass, DiscMass 
          flt_r, flt_c = np.where(StellarMass_all > 0)
          #StellarMass = StellarMass_all[flt_r]
-         del StellarMass, flt_c
+         del flt_c
 
          sfr_gal_z = sagdat.readDataset("Histories/SFR", idxfilter=flt_r)
 
          z_all = snaplist.redshifts[:]
-         z_flt = np.where((z_min<=z_all)&(z_all<=zmax))[0]
+         z_flt = np.where((zmin<=z_all)&(z_all<=zmax))[0]
 
          redshifts = z_all[z_flt]
          sfr = np.zeros(len(z_flt))
@@ -149,11 +154,10 @@ clearing the plot figure.
    pl.errorbar(ob_x, ob_y, yerr=[ob_dyl, ob_dyh], fmt='ok',
                label="Behroozi et al (2013)")
    pl.plot(redshifts, np.log10(sfr), "-r", linewidth=3)
-   pl.xlabel(r'$z$', fontsize=16)
-   pl.ylabel(r'$\log_{10}({\rm SFR\;density}[{\rm M}_\odot/{\rm yr}/{\rm Mpc}^3])$',
-               fontsize=16)
+   pl.xlabel(r'$z$')
+   pl.ylabel(r'$\log_{10}({\rm SFR\;density}[{\rm M}_\odot/{\rm yr}/{\rm Mpc}^3])$')
    #pl.xlim((zmin, zmax))
-   pl.legend(loc=3, frameon=False, fontsize=12)
+   pl.legend(loc=3, frameon=False)
    pl.xscale('symlog')
    ticks = [0,0.5,1,1.5,2,4,6,8]
    pl.xticks(ticks, ticks)
