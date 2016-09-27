@@ -23,6 +23,12 @@ import h5py
 
 from matplotlib import rcParams
 
+def set_style_talk():
+   mpl.rcParams['figure.figsize'] = (6,6)
+   mpl.rcParams['font.size'] = 16
+   mpl.rcParams['legend.fontsize'] = 12
+   mpl.rcParams['legend.frameon'] = False
+
 
 def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0,
         getPlot=False):
@@ -121,11 +127,10 @@ clearing the plot figure.
    pl.plot(x[phi>0], np.log10(phi[phi>0]), '-k', lw=2, label='SAG')
    pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='^b',
               label="Henriques et al (2013), $z="+str(z)+"$")
-   pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$', fontsize=16)
-   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{-3} {\rm Mpc}^{-3} /\log_{10} M_\star])$', 
-             fontsize=16)
+   pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$')
+   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{-3} {\rm Mpc}^{-3} /\log_{10} M_\star])$')
    pl.xlim((7,12.5))
-   pl.legend(loc=3, frameon=False, fontsize=12)
+   pl.legend(loc=3, frameon=False)
    #pl.axis('scaled')
    pl.tight_layout()
    pl.savefig(outpath+'/SMF_z'+str(z)+'.eps')
@@ -242,7 +247,7 @@ clearing the plot figure.
       irr = f['Morph/irr'][:]
       sp  = f['Morph/sp'][:]
       el  = f['Morph/el'][:]
-      Hubble_h = f['Morph/h'][:]
+      Hubble_h = f['Morph/h'].value
       f.close()
 
    if savefile:
@@ -271,15 +276,16 @@ clearing the plot figure.
    pl.plot(x, f_sp, "b--", label="Spirals", linewidth=3)
    pl.plot(x, f_el, "r-.", label="Ellipticals", linewidth=3)
    pl.plot(x, f_irr, "k:", label="Irregulars", linewidth=3)
-   pl.legend(frameon=False, fontsize=12, loc='upper left')
+   pl.legend(frameon=False, loc='upper left')
 
    pl.errorbar(obs_sp[0]+np.log10(Hubble_h), obs_sp[1], yerr=obs_sp[2], fmt="db")
    pl.errorbar(obs_el[0]+np.log10(Hubble_h), obs_el[1], yerr=obs_el[2], fmt="or")
    pl.errorbar(obs_irr[0]+np.log10(Hubble_h), obs_irr[1], yerr=obs_irr[2], fmt="^k")
 
-   pl.xlabel(r"$\log_{10}(M_\star [h^{-1} {\rm M}_\odot])$", fontsize=16)
-   pl.ylabel("Fraction", fontsize=16)
+   pl.xlabel(r"$\log_{10}(M_\star [h^{-1} {\rm M}_\odot])$")
+   pl.ylabel("Fraction")
    pl.xlim((8.,12.))
+   pl.xticks(np.arange(8,13))
    pl.ylim((-0.05, 1.05))
    pl.tight_layout()
    pl.savefig(outpath+'/FracMorph.eps')
@@ -371,9 +377,9 @@ clearing the plot figure.
 
    else: #read histograms from file:
       f = h5py.File(readfile, "r")
-      H = f['BHBulge/histogram']
-      xedges = f['BHBulge/Xedges_bulge']
-      yedges = f['BHBulge/Yedges_bh']
+      H = f['BHBulge/histogram'][:]
+      xedges = f['BHBulge/Xedges_bulge'][:]
+      yedges = f['BHBulge/Yedges_bh'][:]
    
    if savefile:
       f = h5py.File(savefile)
@@ -403,7 +409,7 @@ clearing the plot figure.
    # This is just for not including the error bars in the legend
    handles, labels = ax.get_legend_handles_labels()
    handles = [h[0] for h in handles]
-   ax.legend(handles, labels, frameon=False, fontsize=12, loc="upper left",
+   ax.legend(handles, labels, frameon=False, loc="upper left",
              numpoints=1)
 
    #cs = ax.contourf(x, y, H, vmin=1, locator=ticker.LogLocator(), cmap=cm.Reds)
@@ -413,8 +419,8 @@ clearing the plot figure.
    fig.colorbar(cs)
 
 
-   ax.set_xlabel(r"$\log_{10}(M_{\rm Bulge} [{\rm M}_\odot])$", fontsize=16)
-   ax.set_ylabel(r"$\log_{10}(M_{\rm BH} [{\rm M}_\odot])$", fontsize=16)
+   ax.set_xlabel(r"$\log_{10}(M_{\rm Bulge} [{\rm M}_\odot])$")
+   ax.set_ylabel(r"$\log_{10}(M_{\rm BH} [{\rm M}_\odot])$")
    
    ax.set_xlim(xr)
    ax.set_ylim(yr)
@@ -556,7 +562,7 @@ clearing the plot figure.
    # This is just for not including the error bars in the legend
    handles, labels = ax.get_legend_handles_labels()
    handles = [h[0] for h in handles]
-   ax.legend(handles, labels, frameon=False, fontsize=12, loc="upper left",
+   ax.legend(handles, labels, frameon=False, loc="upper left",
              numpoints=1)
 
    #cs = ax.contourf(x, y, H, vmin=1, locator=ticker.LogLocator(), cmap=cm.Greens)
@@ -568,8 +574,8 @@ clearing the plot figure.
 
    #ax.plot(np.log10(Vrot), Magr, ".k", markersize=0.1)
 
-   ax.set_xlabel(r"$\log_{10}(V_{\rm flat} [{\rm km/s}])$", fontsize=16)
-   ax.set_ylabel(r"$M_{\rm r} - 5 \log_{10} h$", fontsize=16)
+   ax.set_xlabel(r"$\log_{10}(V_{\rm flat} [{\rm km/s}])$")
+   ax.set_ylabel(r"$M_{\rm r} - 5 \log_{10} h$")
    
    ax.set_xlim(xr)
    ax.set_ylim([yr[1],yr[0]])
