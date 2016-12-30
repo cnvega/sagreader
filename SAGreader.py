@@ -502,7 +502,7 @@ when needed.
          # This file must exist!
          simdat = open(filename+"/simdata.txt")
          simname = simdat.readline()
-         self.boxSizeMpc = simdat.readline()
+         self.boxSizeMpc = float(simdat.readline())
          simdat.close()
 
       import os

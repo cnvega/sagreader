@@ -23,11 +23,25 @@ import h5py
 
 from matplotlib import rcParams
 
-def set_style_talk():
-   mpl.rcParams['figure.figsize'] = (6,6)
-   mpl.rcParams['font.size'] = 16
-   mpl.rcParams['legend.fontsize'] = 12
+def set_style(style='book', Hratio=1.0, Wfrac=1.0):
+   if style == 'talk':
+      size, fsize = 6, 16
+   if style == 'book':
+      size, fsize = 5.39, 12
+   if style == 'mnras':
+      size, fsize = 3.32, 8
+   if style == 'mnras-fw':
+      size, fsize = 6.97, 8
+
+   mpl.rcParams['figure.figsize'] = (size*Wfrac, (size*Wfrac)*Hratio)
+   mpl.rcParams['font.family'] = 'serif'
+   mpl.rcParams['font.serif'] = ['Times New Roman']
+   mpl.rcParams['font.size'] = fsize
+   mpl.rcParams['legend.fontsize'] = 'medium'
    mpl.rcParams['legend.frameon'] = False
+   mpl.rcParams['xtick.minor.visible'] = True
+   mpl.rcParams['ytick.minor.visible'] = True
+
 
 
 def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0,
@@ -128,8 +142,8 @@ clearing the plot figure.
    pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='^b',
               label="Henriques et al (2013), $z="+str(z)+"$")
    pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$')
-   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{-3} {\rm Mpc}^{-3} /\log_{10} M_\star])$')
-   pl.xlim((7,12.5))
+   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{3} {\rm Mpc}^{-3} /\log_{10} M_\star])$')
+   pl.xlim((7,13))
    pl.legend(loc=3, frameon=False)
    #pl.axis('scaled')
    pl.tight_layout()
@@ -197,6 +211,10 @@ clearing the plot figure.
 
       if 'Magnitudes/Mag_V_dust1' in sagdat.datasetList():
          MagV = sagdat.readDataset('Magnitudes/Mag_V_dust1')
+         mfilt = MagV < 0
+         del MagV
+      if 'Magnitudes/Mag_V_dust' in sagdat.datasetList():
+         MagV = sagdat.readDataset('Magnitudes/Mag_V_dust')
          mfilt = MagV < 0
          del MagV
       elif 'SED/Magnitudes/Mag_ext_id14_tot_r' in sagdat.datasetList():
@@ -273,9 +291,9 @@ clearing the plot figure.
 
    # Finally, the plot:
    pl.figure()
-   pl.plot(x, f_sp, "b--", label="Spirals", linewidth=3)
-   pl.plot(x, f_el, "r-.", label="Ellipticals", linewidth=3)
-   pl.plot(x, f_irr, "k:", label="Irregulars", linewidth=3)
+   pl.plot(x, f_sp, "b--", label="Spirals", linewidth=2)
+   pl.plot(x, f_el, "r-.", label="Ellipticals", linewidth=2)
+   pl.plot(x, f_irr, "k:", label="Irregulars", linewidth=2)
    pl.legend(frameon=False, loc='upper left')
 
    pl.errorbar(obs_sp[0]+np.log10(Hubble_h), obs_sp[1], yerr=obs_sp[2], fmt="db")
@@ -343,6 +361,10 @@ clearing the plot figure.
          MagV = sagdat.readDataset('Magnitudes/Mag_V_dust1')
          mfilt = MagV < 0
          del MagV
+      if 'Magnitudes/Mag_V_dust' in sagdat.datasetList():
+         MagV = sagdat.readDataset('Magnitudes/Mag_V_dust')
+         mfilt = MagV < 0
+         del MagV
       elif 'SED/Magnitudes/Mag_ext_id14_tot_r' in sagdat.datasetList():
          MagV = sagdat.readDataset('SED/Magnitudes/Mag_ext_id14_tot_r')
          mfilt = MagV < 0
@@ -402,9 +424,9 @@ clearing the plot figure.
    fig, ax = pl.subplots(1,1)
    
    ax.errorbar(obK[0], obK[2], xerr=obK[1], yerr=[obK[4], obK[3]], 
-               fmt="ob", label="Kormendi & Ho (2013)")
+               fmt="ob", label="Kormendy & Ho (2013)", ms=4)
    ax.errorbar(obM[0], obM[2], xerr=obM[1], yerr=[obM[4], obM[3]], 
-               fmt="^g", label="McConnell & Ma (2013)")
+               fmt="^g", label="McConnell & Ma (2013)", ms=4)
 
    # This is just for not including the error bars in the legend
    handles, labels = ax.get_legend_handles_labels()
@@ -488,6 +510,10 @@ clearing the plot figure.
          MagV = sagdat.readDataset('Magnitudes/Mag_V_dust1')
          flt = (MagV < 0)&(0 == galType)
          del MagV, galType
+      if 'Magnitudes/Mag_V_dust' in sagdat.datasetList():
+         MagV = sagdat.readDataset('Magnitudes/Mag_V_dust')
+         flt = (MagV < 0)&(0 == galType)
+         del MagV, galType
       elif 'SED/Magnitudes/Mag_ext_id14_tot_r' in sagdat.datasetList():
          MagV = sagdat.readDataset('SED/Magnitudes/Mag_ext_id14_tot_r')
          flt = (MagV < 0)&(0 == galType)
@@ -502,8 +528,16 @@ clearing the plot figure.
       
       # Mag_rS
       if 'Magnitudes/Bulge/Mag_rSb' in sagdat.datasetList():
-         Mag_rS = sagdat.readDataset('Magnitudes/Mag_rS_dust1', idxfilter=flt)
+         if 'Magnitudes/Mag_rS_dust1' in sagdat.datasetList():
+            Mag_rS = sagdat.readDataset('Magnitudes/Mag_rS_dust1', idxfilter=flt)
+         elif 'Magnitudes/Mag_rS_dust' in sagdat.datasetList():
+            Mag_rS = sagdat.readDataset('Magnitudes/Mag_rS_dust', idxfilter=flt)
+         else:
+            print("ERROR: SDSS-r total magnitudes not found in output")
+            return
+         
          Mag_rSb = sagdat.readDataset('Magnitudes/Bulge/Mag_rSb', idxfilter=flt)
+         
       elif 'SED/Magnitudes/Mag_ext_id121_bulge_r' in sagdat.datasetList():
          Mag_rS = sagdat.readDataset('SED/Magnitudes/Mag_ext_id121_tot_r', idxfilter=flt)
          Mag_rSb = sagdat.readDataset('SED/Magnitudes/Mag_ext_id121_bulge_r', idxfilter=flt)
