@@ -35,7 +35,7 @@ def set_style(style='book', Hratio=1.0, Wfrac=1.0):
 
    mpl.rcParams['figure.figsize'] = (size*Wfrac, (size*Wfrac)*Hratio)
    mpl.rcParams['font.family'] = 'serif'
-   mpl.rcParams['font.serif'] = ['Times New Roman']
+   mpl.rcParams['font.serif'] = ['Liberation Serif', 'Times New Roman']
    mpl.rcParams['font.size'] = fsize
    mpl.rcParams['legend.fontsize'] = 'medium'
    mpl.rcParams['legend.frameon'] = False
@@ -621,4 +621,260 @@ clearing the plot figure.
    if getPlot: return pl
    pl.clf()
    
+   
+def CMD(sagdat, outpath, savefile=None, readfile=False, 
+        masscut=0., divpar=(1.8, 18.7), getPlot=False):
+   """ Color-magnitud diagram.  
+
+Routine for generating the color-magnitud distribution plot at z=0.
+
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param masscut (optional) Mass minimum limit in Msun/h.
+
+@param divpar (optional) Free parameters for the division between 
+the red and blue galaxy population.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """ 
+   print("### Color-magnitud diagram")
+   from matplotlib import colors, ticker, cm
+   from numpy import ma
+
+   datapath = './Data/'
+
+   xr = [-23,  -15]
+   yr = [0.5, 3.3]
+
+   if not readfile:
+      
+      # let's apply a mass filter
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+
+      else:
+         BulgeMass = sagdat.readDataset("BulgeMass")
+         DiscMass = sagdat.readDataset("DiscMass")
+
+      # Units:
+      un = sagdat.readUnits()
+      
+      StellarMass = (BulgeMass+DiscMass)*un.mass.Msun
+      del BulgeMass, DiscMass 
+      massflt = StellarMass > masscut
+      del StellarMass
+ 
+      if 'Magnitudes/Mag_uS_dust1' in sagdat.datasetList():
+         uMag = sagdat.readDataset('Magnitudes/Mag_uS_dust1', idxfilter=massflt)
+         rMag = sagdat.readDataset('Magnitudes/Mag_rS_dust1', idxfilter=massflt)
+      elif 'Magnitudes/Mag_uS_dust' in sagdat.datasetList():
+         uMag = sagdat.readDataset('Magnitudes/Mag_uS_dust', idxfilter=massflt)
+         rMag = sagdat.readDataset('Magnitudes/Mag_rS_dust', idxfilter=massflt)
+      elif 'SED/Magnitudes/Mag_ext_id119_tot_r' in sagdat.datasetList():
+         uMag = sagdat.readDataset('SED/Magnitudes/Mag_ext_id119_tot_r')
+         rMag = sagdat.readDataset('SED/Magnitudes/Mag_ext_id121_tot_r')
+      else:
+         print("ERROR: SDSS-u,r total magnitudes not found in output")
+         return
+      
+      xplot = rMag - 5*np.log10(un.h/0.7)
+      yplot = uMag - rMag
+
+      H, xedges, yedges = np.histogram2d(xplot, yplot, range=[xr,yr], bins=80)
+
+   else: #read histograms from file:
+      f = h5py.File(readfile, "r")
+      H = f['CMD/histogram']
+      xedges = f['CMD/Xedges']
+      yedges = f['CMD/Yedges']
+   
+   if savefile:
+      f = h5py.File(savefile)
+      if 'CMD' in f.keys(): del f['CMD']
+      f['CMD/histogram'] = H
+      f['CMD/Xedges'] = xedges
+      f['CMD/Yedges'] = yedges
+
+
+   # to avoid the warning with 0 in log.
+   H = ma.masked_where(H<=0, H)
+   
+   # and the plot:
+   fig, ax = pl.subplots(1,1)
+   
+   cs = ax.imshow(H.T, origin='lower', 
+                  cmap=cm.YlGn, norm=colors.LogNorm(vmin=1),
+                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
+                  aspect='auto', interpolation='nearest')
+   fig.colorbar(cs)
+
+   xdiv = np.arange(xr[0], xr[1], 0.01)
+   ydiv = divpar[0] - 0.2444*np.tanh((xdiv+divpar[1])/1.09)
+
+   ax.plot(xdiv, ydiv, 'm-', lw=1)
+
+   ax.set_xticks([-22, -20, -18, -16])
+   ax.set_xlabel(r"$r - 5\log_{10}(h_{70})$")
+   ax.set_ylabel(r"$u - r$")
+   
+   ax.set_xlim(xr)
+   ax.set_ylim(yr)
+
+   pl.tight_layout()
+
+   fig.savefig(outpath+"/CMD_uur.eps")
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+  
+
+def RedFraction(sagdat, outpath, savefile=None, readfile=False, 
+        masscut=0., divpar=(1.8, 18.7), getPlot=False):
+   """ Passive/red fraction.  
+
+Routine for generating the fraction of red galaxies.
+
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param masscut (optional) Mass minimum limit in Msun/h.
+
+@param divpar (optional) Free parameters for the division between 
+the red and blue galaxy population.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """ 
+   print("### Red/passive fraction")
+   from matplotlib import colors, ticker, cm
+   from numpy import ma
+
+   datapath = './Data/'
+
+   #xr = [-23,  -15]
+   #yr = [0.5, 3.3]
+
+   if not readfile:
+      
+      # loading the stellar mass
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+
+      else:
+         BulgeMass = sagdat.readDataset("BulgeMass")
+         DiscMass = sagdat.readDataset("DiscMass")
+
+      # Units:
+      un = sagdat.readUnits()
+      
+      StellarMass_all = (BulgeMass+DiscMass)*un.mass.Msun
+      del BulgeMass, DiscMass 
+      massflt = StellarMass_all > masscut
+      StellarMass = StellarMass_all[massflt]
+      del StellarMass_all
+ 
+      if 'Magnitudes/Mag_uS_dust1' in sagdat.datasetList():
+         uMag = sagdat.readDataset('Magnitudes/Mag_uS_dust1', idxfilter=massflt)
+         rMag = sagdat.readDataset('Magnitudes/Mag_rS_dust1', idxfilter=massflt)
+      elif 'Magnitudes/Mag_uS_dust' in sagdat.datasetList():
+         uMag = sagdat.readDataset('Magnitudes/Mag_uS_dust', idxfilter=massflt)
+         rMag = sagdat.readDataset('Magnitudes/Mag_rS_dust', idxfilter=massflt)
+      elif 'SED/Magnitudes/Mag_ext_id119_tot_r' in sagdat.datasetList():
+         uMag = sagdat.readDataset('SED/Magnitudes/Mag_ext_id119_tot_r')
+         rMag = sagdat.readDataset('SED/Magnitudes/Mag_ext_id121_tot_r')
+      else:
+         print("ERROR: SDSS-u,r total magnitudes not found in output")
+         return
+      
+      urcolor = uMag - rMag
+      rMagplot = rMag - 5*np.log10(un.h/0.7)
+      del uMag, rMag
+
+      colorlim = divpar[0]-0.2444*np.tanh((rMagplot+divpar[1])/1.09)
+      del rMagplot
+      
+      redflt = urcolor > colorlim
+      del colorlim
+
+      logSM  = np.log10(StellarMass*un.h)  # h^-2
+      del StellarMass 
+  
+      Vol = sagdat.boxSizeMpc**3
+      bins = np.arange(6, 14, 0.2)
+
+      phi_i, edges = np.histogram(logSM, bins=bins)
+      phi = phi_i.astype(float)/Vol/(edges[1]-edges[0])
+
+      phi_i, edges = np.histogram(logSM[redflt], bins=bins)
+      phi_red = phi_i.astype(float)/Vol/(edges[1]-edges[0])
+
+      del logSM
+
+   else: #read histograms from file:
+      f = h5py.File(readfile, "r")
+      phi     = f['RedFrac/phi']
+      phi_red = f['RedFrac/phi_red']
+      edges   = f['RedFrac/edges']
+   
+   if savefile:
+      f = h5py.File(savefile)
+      if 'RedFrac' in f.keys(): del f['RedFrac']
+      f['RedFrac/phi']     = phi
+      f['RedFrac/phi_red'] = phi_red
+      f['RedFrac/edges']   = edges
+
+   # Observations compilation
+   fname = datapath+"redfracz0.1_Henriques15Compilation.dat"
+   x1, x2, ob_y, ob_e = np.loadtxt(fname, unpack=True)
+   ob_x = (x1 + x2)/2.
+
+   # and the plot:
+   pl.figure()
+   x = (edges[1:]+edges[:-1])/2.0
+   l1, = pl.plot(x[phi_red>0], phi_red[phi_red>0]/phi[phi_red>0], '-r', lw=2, label='SAG')
+   l2 = pl.errorbar(ob_x, ob_y, yerr=ob_e, fmt='^k', label="Henriques et al (2015), z=0.1")
+   pl.xlabel(r'$\log_{10}(M_\star {\rm h}^{-2}[{\rm M}_\odot])$')
+   pl.ylabel(r'$\Phi_{\rm red} / \Phi_{\rm total} $')
+   pl.xticks([8,9,10,11])
+   pl.xlim((7.5,11.5))
+   pl.ylim((0,1))
+   pl.legend(loc='upper left', frameon=False, handles=[l2,l1])
+   pl.tight_layout()
+   pl.savefig(outpath+'/RedFraction.eps')
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   return 
    
