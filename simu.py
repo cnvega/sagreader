@@ -13,24 +13,24 @@ def plots_MDPL():
    if not os.path.exists(outfolder):
       os.makedirs(outfolder)
 
-   inpath = "/data2/MDPL/SalidaSAM/SAG-7.128"
-   data = sag.SAGcollection(inpath)   
+   inpath = "/data2/MDPL/SalidaSAM/SAG-7.128/snapshot_125"
+   #inpath = "/data2/MDPL/SalidaSAM/SAG-7.128/snapshot_119"
+   data = sag.SAGcollection(inpath, 1000.)   
    
-   SAGplots.set_style()
+   SAGplots.set_style(style='book', Wfrac=0.75)
 
-   # 1st: smf
+
+   ## 1st: smf
    SAGplots.SMF(data, outfolder, savefile=outdat, redshift=0)
 
-   # 2nd: morph
-   SAGplots.FracMorph(data, outfolder, savefile=outdat)
+   ## 2nd: morph
+   #SAGplots.FracMorph(data, outfolder, savefile=outdat)
 
-   # BH-B
-   SAGplots.BHBulge(data, outfolder, savefile=outdat)
-   
-   # Tully-Fisher
-   #SAGplots.TullyFisher(data, outfolder, savefile=outdat)
-
-   data.clear()
+   ## BH-B
+   #SAGplots.BHBulge(data, outfolder, savefile=outdat)
+   #
+   ## Tully-Fisher
+   ##SAGplots.TullyFisher(data, outfolder, savefile=outdat)
 
    # High-z SMF:
    #data_tmp = data.select_redshift(0.99, 1.1)
@@ -49,6 +49,11 @@ def plots_MDPL():
 
    #SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
 
+
+   #SAGplots.SFRF(data, outfolder, savefile=outdat)
+   #SAGplots.MstarMhalo(data, outfolder, savefile=outdat)
+   
+   data.clear()
 
 
 def plots_simu():
@@ -139,8 +144,8 @@ def replot_folder(outfolder):
    #SAGplots_evol.SFRvol_z(None, None, outfolder, readfile=outdat)
 
 if __name__ == '__main__':
-   replot_folder("plots/SAG7r58-cM21")
-   #plots_MDPL()
+   #replot_folder("plots/SAG7r58-cM21")
+   plots_MDPL()
    #plots_stand("SAG-7.96-c05abr16")
    #plots_MDPL_replot()
 

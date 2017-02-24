@@ -877,4 +877,353 @@ clearing the plot figure.
    if getPlot: return pl
    pl.clf()
    return 
+
+def GasFrac(sagdat, outpath, savefile=None, readfile=False, 
+            getPlot=False, SFRcut=1e-11):
+   """ Gas fracion versus stellar mass.  
+
+(To be completed)
+
+@param sagdat Input SAGreader.SAGdata or SAGreader.SAGcollection
+object data previously loaded
+with the corresponding files. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """ 
+   print("### Gas fraction vs stellar mass relationship")
+
+   from matplotlib import colors, ticker, cm
+   from numpy import ma
+
+   datapath = './Data/'
+
+   xr = [8,12]
+   yr = [-2,1.5]
+
+   if not readfile:
+      # Units:
+      un = sagdat.readUnits()
+
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+
+         wmass = (BulgeMass + DiscMass) > 0
+         StellarMass = (BulgeMass[wmass]+DiscMass[wmass])*un.mass.Msun/un.h
+         del BulgeMass, DiscMass 
+
+         SFR = sagdat.readDataset("SFR", idxfilter=wmass)
+         SFR /= un.h
+         
+         Gas_bulge = sagdat.readDataset("M_gas_bulge", idxfilter=wmass)
+         Gas_disc = sagdat.readDataset("M_gas_disk", idxfilter=wmass)
+         GasMass = (Gas_bulge+Gas_disc)*un.mass.Msun/un.h
+         del Gas_bulge, Gas_disc, wmass
+
+      else:
+         print("Not implemented yet")
+         return
+
+      sSFR = SFR/StellarMass
+      del SFR
+      flt = (GasMass > 0)&(sSFR > SFRcut)
+      del sSFR
+      
+      # 0.75 correction for the Bosseli data.
+      Gas_Mstar = np.log10(0.75*GasMass[flt]/StellarMass[flt])
+      Mstar     = np.log10(StellarMass[flt])
+      del GasMass, StellarMass
+
+      # mean and desvest:
+      delta = 0.5
+      sag_x = np.arange(8.25, 12, delta)
+      sag_mean, sag_std = np.zeros(sag_x.shape), np.zeros(sag_x.shape)
+      for i, low in enumerate(sag_x):
+         mrange = (low <= Mstar)&(Mstar < low+delta)
+         sag_mean[i] = Gas_Mstar[mrange].mean()
+         sag_std[i]  = Gas_Mstar[mrange].std()
+
+      # Now the color map:      
+      H, xedges, yedges = np.histogram2d(Mstar, Gas_Mstar, range=[xr,yr], bins=80)
+      del Mstar, Gas_Mstar
+
+   else: #read histograms from file:
+      f = h5py.File(readfile, "r")
+      H = f['GasFrac/histogram'][:]
+      xedges = f['GasFrac/Xedges_mstar'][:]
+      yedges = f['GasFrac/Yedges_gasfrac'][:]
+      sag_x    = f['GasFrac/sag_x'][:]
+      sag_mean = f['GasFrac/sag_mean'][:]
+      sag_std  = f['GasFrac/sag_std'][:]
    
+   if savefile:
+      f = h5py.File(savefile)
+      if 'GasFrac' in f.keys(): del f['GasFrac']
+      f['GasFrac/histogram']      = H
+      f['GasFrac/Xedges_mstar']   = xedges
+      f['GasFrac/Yedges_gasfrac'] = yedges
+      f['GasFrac/sag_x'] =  sag_x
+      f['GasFrac/sag_mean'] = sag_mean
+      f['GasFrac/sag_std'] = sag_std 
+
+
+   # to avoid the warning with 0 in log.
+   H = ma.masked_where(H<=0, H)
+   #x = (xedges[1:]+xedges[:-1])/2
+   #y = (yedges[1:]+yedges[:-1])/2
+
+   # Observations:
+   obs = np.loadtxt(datapath+"Boselli2014.dat", unpack=True)
+
+   # and the plot:
+   fig, ax = pl.subplots(1,1)
+   
+   ax.errorbar(obs[0], obs[1], yerr=obs[2], fmt="dk", 
+         label="Boselli et al (2014)", ms=6, zorder=10)
+   
+   # This is just for not including the error bars in the legend
+   handles, labels = ax.get_legend_handles_labels()
+   handles = [h[0] for h in handles]
+   ax.legend(handles, labels, numpoints=1, loc="upper right")
+   
+   cs = ax.imshow(H.T, origin="low", cmap=cm.Blues, norm=colors.LogNorm(vmin=1e2),
+                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
+                  aspect='auto', interpolation='nearest')
+   fig.colorbar(cs)
+   ax.plot(sag_x, sag_mean, 'b-', label='SAG')
+   ax.plot(sag_x, sag_mean+sag_std, 'b--')
+   ax.plot(sag_x, sag_mean-sag_std, 'b--')
+   
+   ax.set_xlabel(r"$\log_{10}(M_\star [{\rm M}_\odot])$")
+   ax.set_ylabel(r"$\log_{10}(M_{\rm gas} / M_\star )$")
+   
+   ax.set_xlim(xr)
+   ax.set_xticks(np.arange(8,13))
+   ax.set_ylim(yr)
+
+   pl.tight_layout()
+
+   fig.savefig(outpath+"/GasFrac.eps")
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   
+
+def SFRF(sagdat, outpath, savefile=None, readfile=False, getPlot=False):
+   """ Star formation rate function (z=0.15)
+
+Routine for generating the star formation rate function at z=0.15.
+
+@param sagdat Input SAGreader.SAGdata object data previously loaded
+with the corresponding redshift. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
+   print("### Star formation rate function (z=0.15)")
+
+   datapath = './Data/'
+  
+   if not readfile:
+
+      # Units:
+      un = sagdat.readUnits()
+
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+
+         wmass = (BulgeMass + DiscMass) > 0
+         del BulgeMass, DiscMass 
+
+         SFR_all = sagdat.readDataset("SFR", idxfilter=wmass)
+         SFR_all /= un.h
+         SFR  = SFR_all[SFR_all > 0]
+         del SFR_all
+
+      else:
+         print("Not implemented yet")
+         return
+
+      # log scale: 
+      logSFR = np.log10(SFR) 
+      del SFR
+
+      Vol = (sagdat.boxSizeMpc/un.h)**3
+
+      # And the counting:
+      phi_i, bins = np.histogram(logSFR, bins=30, range=[-1,3])
+
+      phi = phi_i.astype(float)/Vol/(bins[1]-bins[0])
+
+   else: # load the histograms from a file:
+      f = h5py.File(readfile, "r")
+      bins = f['SFRF/bins'][:] 
+      phi  = f['SFRF/phi'][:]  
+      f.close()
+
+   if savefile:
+      f = h5py.File(savefile)
+      if 'SFRF' in f.keys(): del f['SFRF']
+      f['SFRF/bins']  = bins
+      f['SFRF/phi']   = phi
+      f.close()
+
+   obs = np.loadtxt(datapath+"Gruppioni2015.dat", unpack=True)
+
+   # Finally, the plot:
+   pl.figure()
+   x = (bins[1:]+bins[:-1])/2.0
+   pl.plot(x[phi>0], np.log10(phi[phi>0]), '-m', lw=2, label='SAG')
+   
+   pl.errorbar((obs[1]+obs[0])/2., obs[2] , yerr=obs[3], fmt='ok',
+              label="Gruppioni et al. (2015)", markersize=7, zorder=3)
+
+   pl.xlabel(r'$\log_{10}({\rm SFR}[{\rm M}_\odot / {\rm yr}])$')
+   pl.ylabel(r'$\log_{10}(\Phi[{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
+   pl.xlim((-1,3))
+   pl.xticks(np.arange(-1,4,1))
+   pl.yticks(np.arange(-9,0,2))
+   pl.legend(loc='lower left', numpoints=1)
+   #pl.axis('scaled')
+   pl.tight_layout()
+   pl.savefig(outpath+'/SFRF_z0_15.eps')
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   return
+
+def MstarMhalo(sagdat, outpath, savefile=None, readfile=False, getPlot=False):
+   """ Stellar to halo Mass ratio
+
+Routine for generating the stellar/halo mass versus halo mass.
+
+@param sagdat Input SAGreader.SAGdata object data previously loaded
+with the corresponding redshift. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
+   print("### Mstar/Mhalo ratio")
+
+   from matplotlib import colors, ticker, cm
+
+   datapath = './Data/'
+  
+   xr = [10,14]
+   yr = [0,0.04]
+
+   if not readfile:
+
+      # Units:
+      un = sagdat.readUnits()
+
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+         
+         StellarMass_all = BulgeMass + DiscMass
+         del BulgeMass, DiscMass 
+
+         GalType = sagdat.readDataset("Galaxy_Type")
+
+         flt = (StellarMass_all > 0)&(GalType < 2)
+         StellarMass = StellarMass_all[flt]*un.mass.Msun/un.h
+         del StellarMass_all
+
+         Mhalo = sagdat.readDataset("Halo/M200c", idxfilter=flt)
+         Mhalo *= un.mass.Msun/un.h
+
+      else:
+         print("Not implemented yet")
+         return
+
+      # Now the color map:      
+      H, xedges, yedges = np.histogram2d(np.log10(Mhalo), StellarMass/Mhalo, 
+                          range=[xr,yr], bins=50)
+      del StellarMass, Mhalo
+
+   else: #read histograms from file:
+      f = h5py.File(readfile, "r")
+      H = f['MSMH/histogram'][:]
+      xedges = f['MSMH/Xedges_mstar'][:]
+      yedges = f['MSMH/Yedges_gasfrac'][:]
+   
+   if savefile:
+      f = h5py.File(savefile)
+      if 'MSMH' in f.keys(): del f['MSMH']
+      f['MSMH/histogram']      = H
+      f['MSMH/Xedges_mstar']   = xedges
+      f['MSMH/Yedges_gasfrac'] = yedges
+
+   obs = np.loadtxt(datapath+"moster2010.dat", unpack=True)
+
+   # Finally, the plot:
+   fig, ax = pl.subplots(1,1)
+
+   cs = ax.imshow(H.T, origin="low", cmap=cm.bone_r, norm=colors.LogNorm(vmin=1e2),
+                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
+                  aspect='auto', interpolation='nearest')
+   fig.colorbar(cs)
+
+   ax.plot(np.log10(obs[0]), obs[1]/obs[0], 'r-', label='Moster et al. (2010)')
+   ax.plot(np.log10(obs[0]), obs[2]/obs[0], 'r--')
+   ax.plot(np.log10(obs[0]), obs[3]/obs[0], 'r--')
+
+   ax.set_xlabel(r'$\log_{10}(M_{\rm vir} [{\rm M}_\odot])$')
+   ax.set_ylabel(r'$\log_{10}(M_\star / M_{\rm vir})$')
+   
+   ax.set_xlim(xr)
+   ax.set_xticks(np.arange(10, 15, 1))
+   ax.set_ylim(yr)
+   ax.set_yticks(np.arange(0, 0.05, 0.01))
+   
+   ax.legend(loc='upper right')
+   
+   pl.tight_layout()
+   pl.savefig(outpath+'/MstarMhalo.eps')
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   return
+
