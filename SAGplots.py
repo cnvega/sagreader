@@ -21,7 +21,8 @@ import numpy as np
 import math
 import h5py
 
-from matplotlib import rcParams
+from matplotlib import rcParams, colors, ticker, cm
+
 
 def set_style(style='book', Hratio=1.0, Wfrac=1.0):
    if style == 'talk':
@@ -35,13 +36,23 @@ def set_style(style='book', Hratio=1.0, Wfrac=1.0):
 
    mpl.rcParams['figure.figsize'] = (size*Wfrac, (size*Wfrac)*Hratio)
    mpl.rcParams['font.family'] = 'serif'
-   mpl.rcParams['font.serif'] = ['Liberation Serif', 'Times New Roman']
+   mpl.rcParams['font.serif'] = ['Times', 'Liberation Serif', 'Times New Roman']
    mpl.rcParams['font.size'] = fsize
    mpl.rcParams['legend.fontsize'] = 'medium'
    mpl.rcParams['legend.frameon'] = False
-   mpl.rcParams['xtick.minor.visible'] = True
-   mpl.rcParams['ytick.minor.visible'] = True
-
+   mpl.rcParams['text.usetex'] = True
+   try:
+      mpl.rcParams['xtick.minor.visible'] = True
+      mpl.rcParams['ytick.minor.visible'] = True
+   except: pass
+   try:
+      mpl.rcParams['xtick.top'] = True
+      mpl.rcParams['ytick.right'] = True
+   except: pass
+   try:
+      mpl.rcParams['xtick.direction'] = 'in'
+      mpl.rcParams['ytick.direction'] = 'in'
+   except: pass
 
 
 def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0,
@@ -142,7 +153,7 @@ clearing the plot figure.
    pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='^b',
               label="Henriques et al (2013), $z="+str(z)+"$")
    pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$')
-   pl.ylabel(r'$\log_{10}(\Phi[{\rm h}^{3} {\rm Mpc}^{-3} /\log_{10} M_\star])$')
+   pl.ylabel(r'$\log_{10}(\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
    pl.xlim((7,13))
    pl.legend(loc=3, frameon=False)
    #pl.axis('scaled')
@@ -348,9 +359,6 @@ clearing the plot figure.
    """ 
    print("### Black hole vs Bulge mass relationship")
 
-   from matplotlib import colors, ticker, cm
-   from numpy import ma
-
    datapath = './Data/'
 
    xr = [8,13]
@@ -412,9 +420,9 @@ clearing the plot figure.
 
 
    # to avoid the warning with 0 in log.
-   H = ma.masked_where(H<=0, H)
-   #x = (xedges[1:]+xedges[:-1])/2
-   #y = (yedges[1:]+yedges[:-1])/2
+   H = np.ma.masked_where(H<=0, H)
+   x = (xedges[1:]+xedges[:-1])/2
+   y = (yedges[1:]+yedges[:-1])/2
 
    # Observations:
    obK = np.loadtxt(datapath+"BHB_Kormendy2013.dat", unpack=True)
@@ -424,9 +432,11 @@ clearing the plot figure.
    fig, ax = pl.subplots(1,1)
    
    ax.errorbar(obK[0], obK[2], xerr=obK[1], yerr=[obK[4], obK[3]], 
-               fmt="ob", label="Kormendy & Ho (2013)", ms=4)
+               fmt="ob", label="Kormendy \& Ho (2013)", ms=4, mec='k',
+               elinewidth=1)
    ax.errorbar(obM[0], obM[2], xerr=obM[1], yerr=[obM[4], obM[3]], 
-               fmt="^g", label="McConnell & Ma (2013)", ms=4)
+               fmt="^g", label="McConnell \& Ma (2013)", ms=4, mec='k',
+               elinewidth=1)
 
    # This is just for not including the error bars in the legend
    handles, labels = ax.get_legend_handles_labels()
@@ -434,11 +444,11 @@ clearing the plot figure.
    ax.legend(handles, labels, frameon=False, loc="upper left",
              numpoints=1)
 
-   #cs = ax.contourf(x, y, H, vmin=1, locator=ticker.LogLocator(), cmap=cm.Reds)
-   cs = ax.imshow(H.T, origin="low", cmap=cm.YlOrBr, norm=colors.LogNorm(vmin=1),
-                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
-                  aspect='auto', interpolation='nearest')
-   fig.colorbar(cs)
+   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlOrBr)
+   
+   fig.colorbar(cs, ticks=ticks)
 
 
    ax.set_xlabel(r"$\log_{10}(M_{\rm Bulge} [{\rm M}_\odot])$")
@@ -489,8 +499,6 @@ matplotlib.pylab is returned by the function at the end instead of
 clearing the plot figure.
    """ 
    print("### Tully Fisher relationship")
-   from matplotlib import colors, ticker, cm
-   from numpy import ma
 
    datapath = './Data/'
 
@@ -580,9 +588,9 @@ clearing the plot figure.
 
 
    # to avoid the warning with 0 in log.
-   H = ma.masked_where(H<=0, H)
-   #x = (xedges[1:]+xedges[:-1])/2
-   #y = (yedges[1:]+yedges[:-1])/2
+   H = np.ma.masked_where(H<=0, H)
+   x = (xedges[1:]+xedges[:-1])/2
+   y = (yedges[1:]+yedges[:-1])/2
    
    # Observations:
    obs = np.loadtxt(datapath+'TF_rband_guo2011.dat', unpack=True)
@@ -599,12 +607,11 @@ clearing the plot figure.
    ax.legend(handles, labels, frameon=False, loc="upper left",
              numpoints=1)
 
-   #cs = ax.contourf(x, y, H, vmin=1, locator=ticker.LogLocator(), cmap=cm.Greens)
-   cs = ax.imshow(H.T, origin='lower', 
-                  cmap=cm.Greens, norm=colors.LogNorm(vmin=1),
-                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
-                  aspect='auto', interpolation='nearest')
-   fig.colorbar(cs)
+   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.Greens)
+   
+   fig.colorbar(cs, ticks=ticks)
 
    #ax.plot(np.log10(Vrot), Magr, ".k", markersize=0.1)
 
@@ -654,8 +661,6 @@ matplotlib.pylab is returned by the function at the end instead of
 clearing the plot figure.
    """ 
    print("### Color-magnitud diagram")
-   from matplotlib import colors, ticker, cm
-   from numpy import ma
 
    datapath = './Data/'
 
@@ -714,16 +719,18 @@ clearing the plot figure.
 
 
    # to avoid the warning with 0 in log.
-   H = ma.masked_where(H<=0, H)
+   H = np.ma.masked_where(H<=0, H)
+   x = (xedges[1:]+xedges[:-1])/2
+   y = (yedges[1:]+yedges[:-1])/2
    
    # and the plot:
    fig, ax = pl.subplots(1,1)
    
-   cs = ax.imshow(H.T, origin='lower', 
-                  cmap=cm.YlGn, norm=colors.LogNorm(vmin=1),
-                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
-                  aspect='auto', interpolation='nearest')
-   fig.colorbar(cs)
+   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlGn)
+   
+   fig.colorbar(cs, ticks=ticks)
 
    xdiv = np.arange(xr[0], xr[1], 0.01)
    ydiv = divpar[0] - 0.2444*np.tanh((xdiv+divpar[1])/1.09)
@@ -777,8 +784,6 @@ matplotlib.pylab is returned by the function at the end instead of
 clearing the plot figure.
    """ 
    print("### Red/passive fraction")
-   from matplotlib import colors, ticker, cm
-   from numpy import ma
 
    datapath = './Data/'
 
@@ -906,9 +911,6 @@ clearing the plot figure.
    """ 
    print("### Gas fraction vs stellar mass relationship")
 
-   from matplotlib import colors, ticker, cm
-   from numpy import ma
-
    datapath = './Data/'
 
    xr = [8,12]
@@ -952,8 +954,8 @@ clearing the plot figure.
       delta = 0.5
       sag_x = np.arange(8.25, 12, delta)
       sag_mean, sag_std = np.zeros(sag_x.shape), np.zeros(sag_x.shape)
-      for i, low in enumerate(sag_x):
-         mrange = (low <= Mstar)&(Mstar < low+delta)
+      for i, cen in enumerate(sag_x):
+         mrange = (cen-delta/2. <= Mstar)&(Mstar < cen+delta/2.)
          sag_mean[i] = Gas_Mstar[mrange].mean()
          sag_std[i]  = Gas_Mstar[mrange].std()
 
@@ -982,9 +984,9 @@ clearing the plot figure.
 
 
    # to avoid the warning with 0 in log.
-   H = ma.masked_where(H<=0, H)
-   #x = (xedges[1:]+xedges[:-1])/2
-   #y = (yedges[1:]+yedges[:-1])/2
+   H = np.ma.masked_where(H<=0, H)
+   x = (xedges[1:]+xedges[:-1])/2
+   y = (yedges[1:]+yedges[:-1])/2
 
    # Observations:
    obs = np.loadtxt(datapath+"Boselli2014.dat", unpack=True)
@@ -1000,10 +1002,12 @@ clearing the plot figure.
    handles = [h[0] for h in handles]
    ax.legend(handles, labels, numpoints=1, loc="upper right")
    
-   cs = ax.imshow(H.T, origin="low", cmap=cm.Blues, norm=colors.LogNorm(vmin=1e2),
-                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
-                  aspect='auto', interpolation='nearest')
-   fig.colorbar(cs)
+   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.Blues)
+   
+   fig.colorbar(cs, ticks=ticks)
+
    ax.plot(sag_x, sag_mean, 'b-', label='SAG')
    ax.plot(sag_x, sag_mean+sag_std, 'b--')
    ax.plot(sag_x, sag_mean-sag_std, 'b--')
@@ -1120,7 +1124,7 @@ clearing the plot figure.
    pl.clf()
    return
 
-def MstarMhalo(sagdat, outpath, savefile=None, readfile=False, getPlot=False):
+def MstarMhalo_ratio(sagdat, outpath, savefile=None, readfile=False, getPlot=False):
    """ Stellar to halo Mass ratio
 
 Routine for generating the stellar/halo mass versus halo mass.
@@ -1198,17 +1202,23 @@ clearing the plot figure.
 
    obs = np.loadtxt(datapath+"moster2010.dat", unpack=True)
 
+   # to avoid the warning with 0 in log.
+   H = np.ma.masked_where(H<=0, H)
+   x = (xedges[1:]+xedges[:-1])/2
+   y = (yedges[1:]+yedges[:-1])/2
+
    # Finally, the plot:
    fig, ax = pl.subplots(1,1)
 
-   cs = ax.imshow(H.T, origin="low", cmap=cm.bone_r, norm=colors.LogNorm(vmin=1e2),
-                  extent=[xedges[0],xedges[-1],yedges[0],yedges[-1]], 
-                  aspect='auto', interpolation='nearest')
-   fig.colorbar(cs)
+   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.1))+1, 1)
+   
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.BuPu)
 
-   ax.plot(np.log10(obs[0]), obs[1]/obs[0], 'r-', label='Moster et al. (2010)')
-   ax.plot(np.log10(obs[0]), obs[2]/obs[0], 'r--')
-   ax.plot(np.log10(obs[0]), obs[3]/obs[0], 'r--')
+   fig.colorbar(cs, ticks=ticks)
+
+   ax.plot(np.log10(obs[0]), obs[1]/obs[0], 'k-', label='Moster et al. (2010)')
+   ax.plot(np.log10(obs[0]), obs[2]/obs[0], 'k--')
+   ax.plot(np.log10(obs[0]), obs[3]/obs[0], 'k--')
 
    ax.set_xlabel(r'$\log_{10}(M_{\rm vir} [{\rm M}_\odot])$')
    ax.set_ylabel(r'$\log_{10}(M_\star / M_{\rm vir})$')
@@ -1221,9 +1231,158 @@ clearing the plot figure.
    ax.legend(loc='upper right')
    
    pl.tight_layout()
-   pl.savefig(outpath+'/MstarMhalo.eps')
+   pl.savefig(outpath+'/MstarMhalo_ratio.eps')
    print("Done!")
    if getPlot: return pl
    pl.clf()
    return
 
+def MstarMhalo(sagdat, outpath, savefile=None, readfile=False, galTypes=(0,1),
+               getPlot=False):
+   """ Stellar mass vs to halo Mass
+
+Routine for generating the stellar versus halo mass.
+
+@param sagdat Input SAGreader.SAGdata object data previously loaded
+with the corresponding redshift. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param galTypes (optional) Galaxy types for being included in the plot.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
+   print("### Mstar/Mhalo ratio")
+
+   datapath = './Data/'
+  
+   xr = [10,14]
+   yr = [7, 12]
+
+   suf = "_t"
+   for t in galTypes: suf += str(t)
+
+   if not readfile:
+
+      # Units:
+      un = sagdat.readUnits()
+
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+         
+         StellarMass_all = BulgeMass + DiscMass
+         del BulgeMass, DiscMass 
+
+         GalType = sagdat.readDataset("Galaxy_Type")
+
+         flt = np.zeros(StellarMass_all.shape, dtype=np.bool)
+         for t in galTypes:
+            flt[GalType == t] = True
+         flt = flt & (StellarMass_all > 0)
+         
+         StellarMass = StellarMass_all[flt]*un.mass.Msun/un.h
+         del StellarMass_all
+
+         Mhalo = sagdat.readDataset("Halo/M200c", idxfilter=flt)
+         Mhalo *= un.mass.Msun/un.h
+
+      else:
+         print("Not implemented yet")
+         return
+
+      Mhalo = np.log10(Mhalo)
+      StellarMass = np.log10(StellarMass)
+
+      delta = 0.5
+      sag_x = np.arange(10, 14, delta)
+      sag_mean, sag_std = np.zeros(sag_x.shape), np.zeros(sag_x.shape)
+      for i, cen in enumerate(sag_x):
+         mrange = (cen-delta/2. <= Mhalo)&(Mhalo < cen+delta/2.)
+         sag_mean[i] = StellarMass[mrange].mean()
+         sag_std[i]  = StellarMass[mrange].std()
+      sag_dx = np.array([delta/2.])
+
+      # Now the color map:      
+      H, xedges, yedges = np.histogram2d(Mhalo, StellarMass, range=[xr,yr], bins=50)
+      del StellarMass, Mhalo
+
+   else: #read histograms from file:
+      f = h5py.File(readfile, "r")
+      H = f['MSvsMH'+suf+'/histogram'][:]
+      xedges = f['MSvsMH'+suf+'/Xedges_mhalo'][:]
+      yedges = f['MSvsMH'+suf+'/Yedges_mstar'][:]
+      sag_x    = f['MSvsMH'+suf+'/sag_x'][:]
+      sag_dx    = f['MSvsMH'+suf+'/sag_dx'][:]
+      sag_mean = f['MSvsMH'+suf+'/sag_mean'][:]
+      sag_std  = f['MSvsMH'+suf+'/sag_std'][:]
+   
+   if savefile:
+      f = h5py.File(savefile)
+      if 'MSvsMH'+suf in f.keys(): del f['MSvsMH'+suf]
+      f['MSvsMH'+suf+'/histogram']    = H
+      f['MSvsMH'+suf+'/Xedges_mhalo'] = xedges
+      f['MSvsMH'+suf+'/Yedges_mstar'] = yedges
+      f['MSvsMH'+suf+'/sag_x'] =  sag_x
+      f['MSvsMH'+suf+'/sag_dx'] =  sag_dx
+      f['MSvsMH'+suf+'/sag_mean'] = sag_mean
+      f['MSvsMH'+suf+'/sag_std'] = sag_std 
+
+   obs = np.loadtxt(datapath+"moster2010.dat", unpack=True)
+
+   # to avoid the warning with 0 in log.
+   H = np.ma.masked_where(H<=0, H)
+   x = (xedges[1:]+xedges[:-1])/2
+   y = (yedges[1:]+yedges[:-1])/2
+
+   # Finally, the plot:
+   fig, ax = pl.subplots(1,1)
+
+   ticks = 10**np.arange(0, math.floor(np.log10(H.sum()*0.1))+1, 1)
+   
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.BuPu)
+
+   fig.colorbar(cs, ticks=ticks)
+
+   ax.errorbar(sag_x, sag_mean, yerr=sag_std, xerr=sag_dx[0], fmt='ms', label='SAG', ms=3, 
+               mec='k')
+   #ax.plot(sag_x, sag_mean+sag_std, 'm--')
+   #ax.plot(sag_x, sag_mean-sag_std, 'm--')
+
+   ax.plot(np.log10(obs[0]), np.log10(obs[1]), 'k-', label='Moster et al. (2010)',
+                     lw=1, zorder=10)
+   #ax.plot(np.log10(obs[0]), np.log10(obs[2]), 'k:')
+   #ax.plot(np.log10(obs[0]), np.log10(obs[3]), 'k:')
+
+   ax.set_xlabel(r'$\log_{10}(M_{\rm vir} [{\rm M}_\odot])$')
+   ax.set_ylabel(r'$\log_{10}(M_\star / M_{\rm vir})$')
+   
+   ax.set_xlim(xr)
+   ax.set_xticks(np.arange(10, 15, 1))
+   ax.set_ylim(yr)
+   ax.set_yticks(np.arange(8, 13, 1))
+   
+   # This is just for not including the error bars in the legend
+   handles, labels = ax.get_legend_handles_labels()
+   for i,h in enumerate(handles):
+      if not isinstance(h, mpl.lines.Line2D): handles[i]=h[0]
+   ax.legend(handles, labels, numpoints=1, loc='lower right')
+   
+   pl.tight_layout()
+   pl.savefig(outpath+'/MstarVSMhalo'+suf+'.eps')
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   return

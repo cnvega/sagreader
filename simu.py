@@ -13,13 +13,11 @@ def plots_MDPL():
    if not os.path.exists(outfolder):
       os.makedirs(outfolder)
 
-   inpath = "/data2/MDPL/SalidaSAM/SAG-7.128/snapshot_125"
-   #inpath = "/data2/MDPL/SalidaSAM/SAG-7.128/snapshot_119"
-   data = sag.SAGcollection(inpath, 1000.)   
+   inpath = "/data2/MDPL/SalidaSAM/SAG-7.128/snapshots/snapshot_125"
+   data = sag.SAGcollection(inpath, boxSizeMpc=1000., keepOpen=False)   
    
-   SAGplots.set_style(style='book', Wfrac=0.75)
-
-
+   SAGplots.set_style("book", Wfrac=0.75)
+   
    ## 1st: smf
    SAGplots.SMF(data, outfolder, savefile=outdat, redshift=0)
 
@@ -49,7 +47,7 @@ def plots_MDPL():
 
    #SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
 
-
+   #SAGplots.GasFrac(data, outfolder, savefile=outdat)
    #SAGplots.SFRF(data, outfolder, savefile=outdat)
    #SAGplots.MstarMhalo(data, outfolder, savefile=outdat)
    
@@ -128,23 +126,31 @@ def replot_folder(outfolder):
       print(outfolder+" does not exist!")
       return 
 
-   SAGplots.set_style('book', Wfrac=0.75)
-   #SAGplots.set_style('mnras')
+   #SAGplots.set_style('book', Wfrac=0.75)
+   SAGplots.set_style("mnras", Hratio=0.75)
 
-   # 1st: smf
-   SAGplots.SMF(None, outfolder, readfile=outdat, redshift=0)
-
-   # 2nd: morph
-   SAGplots.FracMorph(None, outfolder, readfile=outdat)
-
-   # BH-B
-   SAGplots.BHBulge(None, outfolder, readfile=outdat)
+   ### Full set of plots:
+   #SAGplots.SMF(None, outfolder, readfile=outdat, redshift=0)
+   #SAGplots.SMF(None, outfolder, readfile=outdat, redshift=1)
+   #SAGplots.SMF(None, outfolder, readfile=outdat, redshift=2)
+   #SAGplots.FracMorph(None, outfolder, readfile=outdat)
+   #SAGplots.BHBulge(None, outfolder, readfile=outdat)
+   #SAGplots.TullyFisher(None, outfolder, readfile=outdat)
+   #SAGplots.CMD(None, outfolder, readfile=outdat, divpar=(1.8, 18.7))
+   #SAGplots.RedFraction(None, outfolder, readfile=outdat, divpar=(1.8, 18.7))
+   #SAGplots.GasFrac(None, outfolder, readfile=outdat)
   
-   # SFR
+   #SAGplots.SFRF(None, outfolder, readfile=outdat)
+   
+   SAGplots.MstarMhalo(None, outfolder, readfile=outdat)
+   SAGplots.MstarMhalo(None, outfolder, readfile=outdat, galTypes=[0])
+   SAGplots.MstarMhalo(None, outfolder, readfile=outdat, galTypes=[1])
+
+
    #SAGplots_evol.SFRvol_z(None, None, outfolder, readfile=outdat)
 
 if __name__ == '__main__':
-   #replot_folder("plots/SAG7r58-cM21")
+   #replot_folder("plots/SAG-7.128")
    plots_MDPL()
    #plots_stand("SAG-7.96-c05abr16")
    #plots_MDPL_replot()
