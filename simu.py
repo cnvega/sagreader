@@ -17,9 +17,9 @@ def plots_MDPL():
    data = sag.SAGcollection(inpath, boxSizeMpc=1000., keepOpen=False)   
    
    SAGplots.set_style("book", Wfrac=0.75)
-   
+
    ## 1st: smf
-   SAGplots.SMF(data, outfolder, savefile=outdat, redshift=0)
+   #SAGplots.SMF(data, outfolder, savefile=outdat, redshift=0)
 
    ## 2nd: morph
    #SAGplots.FracMorph(data, outfolder, savefile=outdat)
@@ -49,7 +49,8 @@ def plots_MDPL():
 
    #SAGplots.GasFrac(data, outfolder, savefile=outdat)
    #SAGplots.SFRF(data, outfolder, savefile=outdat)
-   #SAGplots.MstarMhalo(data, outfolder, savefile=outdat)
+   
+   SAGplots.MstarMhalo_ratio(data, outfolder, savefile=outdat)
    
    data.clear()
 
