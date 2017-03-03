@@ -1155,7 +1155,7 @@ clearing the plot figure.
    datapath = './Data/'
   
    xr = [10,14]
-   yr = [0,0.04]
+   yr = [-4,-0.5]
 
    if not readfile:
 
@@ -1183,7 +1183,7 @@ clearing the plot figure.
          return
 
       # Now the color map:      
-      H, xedges, yedges = np.histogram2d(np.log10(Mhalo), StellarMass/Mhalo, 
+      H, xedges, yedges = np.histogram2d(np.log10(Mhalo), np.log10(StellarMass/Mhalo), 
                           range=[xr,yr], bins=50)
       del StellarMass, Mhalo
 
@@ -1216,9 +1216,9 @@ clearing the plot figure.
 
    fig.colorbar(cs, ticks=ticks)
 
-   ax.plot(np.log10(obs[0]), obs[1]/obs[0], 'k-', label='Moster et al. (2010)')
-   ax.plot(np.log10(obs[0]), obs[2]/obs[0], 'k--')
-   ax.plot(np.log10(obs[0]), obs[3]/obs[0], 'k--')
+   ax.plot(np.log10(obs[0]), np.log10(obs[1]/obs[0]), 'k-', label='Moster et al. (2010)')
+   ax.plot(np.log10(obs[0]), np.log10(obs[2]/obs[0]), 'k--')
+   ax.plot(np.log10(obs[0]), np.log10(obs[3]/obs[0]), 'k--')
 
    ax.set_xlabel(r'$\log_{10}(M_{\rm vir} [{\rm M}_\odot])$')
    ax.set_ylabel(r'$\log_{10}(M_\star / M_{\rm vir})$')
@@ -1226,7 +1226,6 @@ clearing the plot figure.
    ax.set_xlim(xr)
    ax.set_xticks(np.arange(10, 15, 1))
    ax.set_ylim(yr)
-   ax.set_yticks(np.arange(0, 0.05, 0.01))
    
    ax.legend(loc='upper right')
    
@@ -1264,7 +1263,7 @@ the 'savefile' option.
 matplotlib.pylab is returned by the function at the end instead of
 clearing the plot figure.
    """
-   print("### Mstar/Mhalo ratio")
+   print("### Mstar vs Mhalo")
 
    datapath = './Data/'
   
