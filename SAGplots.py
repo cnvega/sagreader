@@ -23,6 +23,7 @@ import h5py
 
 from matplotlib import rcParams, colors, ticker, cm
 
+ExtraDatSMF = False
 
 def set_style(style='book', Hratio=1.0, Wfrac=1.0):
    if style == 'talk':
@@ -41,6 +42,7 @@ def set_style(style='book', Hratio=1.0, Wfrac=1.0):
    mpl.rcParams['legend.fontsize'] = 'medium'
    mpl.rcParams['legend.frameon'] = False
    mpl.rcParams['text.usetex'] = True
+   mpl.rcParams['axes.linewidth'] = 0.5
    try:
       mpl.rcParams['xtick.minor.visible'] = True
       mpl.rcParams['ytick.minor.visible'] = True
@@ -56,7 +58,7 @@ def set_style(style='book', Hratio=1.0, Wfrac=1.0):
 
 
 def SMF(sagdat, outpath, savefile=None, readfile=False, redshift=0,
-        getPlot=False):
+        little_h=0.6777, getPlot=False):
    """ Stellar Mass function
 
 Routine for generating a stellar mass function plot. It can be used
@@ -81,6 +83,9 @@ the 'savefile' option.
 the loaded data. Is can be either 0, 1, 2 or 3, and is used for loading
 the corresponding observational data.
 
+@param little_h (optional) Little h Hubble constant to include extra
+observational data at z=0 (ExtraDatSMF==True).
+
 @param getPlot (optional) If set to True, the reference to 
 matplotlib.pylab is returned by the function at the end instead of
 clearing the plot figure.
@@ -99,6 +104,20 @@ clearing the plot figure.
    ob_x = (x1 + x2)/2.
    ob_eu = np.log10((ob_y+ob_e)/ob_y)
    ob_ed = np.log10(ob_y/(ob_y-ob_e))
+   ob_dy = ob_e/ob_y
+
+   if z == 0 and ExtraDatSMF:
+      obs = []
+      obsnames = [datapath+'StellarMassFunc_z0_dust_free_Mendel_2014.dat',
+                  datapath+'StellarMassFunc_z0_Mendel_2014.dat',
+                  datapath+'StellarMassFunc_z0_MPA_Chen_2012.dat',
+                  datapath+'StellarMassFunc_z0_W11_Chen_2012.dat']
+      obstags =  ['Mendel et al. (2014), dust free',
+                  'Mendel et al. (2014)',
+                  'Chen et al. (2012), MPA mass',
+                  'Chen et al. (2012), W11 mass']
+      for f in obsnames:
+         obs.append(np.loadtxt(f, unpack=True))
 
    if not readfile:
 
@@ -148,14 +167,38 @@ clearing the plot figure.
 
    # Finally, the plot:
    pl.figure()
+
+   if z == 0 and ExtraDatSMF:
+      #lines = ["#1b9e77", "#d95f02", "#7570b3", "#e7298a"]
+      #for i in range(4):
+      #   pl.errorbar(obs[i][0]-2*np.log10(0.6777), obs[i][1], yerr=obs[i][2], 
+      #               label=obstags[i], marker='o', markersize=1.2, linewidth=0.8,
+      #               color=lines[i])
+      npoints = len(obs[0][0])
+      eob_ymin = np.zeros(npoints) 
+      eob_ymax = np.zeros(npoints)
+      eob_x = obs[0][0]
+      for i in range(npoints):
+         eob_ymin[i] = min(obs[0][1][i]-obs[0][2][i],obs[1][1][i]-obs[1][2][i],
+                           obs[2][1][i]-obs[2][2][i],obs[3][1][i]-obs[3][2][i])
+         eob_ymax[i] = max(obs[0][1][i]+obs[0][2][i],obs[1][1][i]+obs[1][2][i],
+                           obs[2][1][i]+obs[2][2][i],obs[3][1][i]+obs[3][2][i])
+      pl.fill_between(eob_x-2*np.log10(little_h), eob_ymin, eob_ymax,
+                      facecolor='#D0D0FF', zorder=1, 
+                      label="Chen et al. (2012), Mendel et al. (2014)")
+
    x = (bins[1:]+bins[:-1])/2.0
-   pl.plot(x[phi>0], np.log10(phi[phi>0]), '-k', lw=2, label='SAG')
-   pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='^b',
-              label="Henriques et al (2013), $z="+str(z)+"$")
+   pl.plot(x[phi>0], np.log10(phi[phi>0]), '-r', lw=1.5, label='SAG', zorder=10)
+   pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='ok', mec='k', mew=0.5,
+              label="Henriques et al (2013), $z="+str(z)+"$", zorder=20, ms=4,
+              elinewidth=1)
    pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$')
    pl.ylabel(r'$\log_{10}(\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
-   pl.xlim((7,13))
-   pl.legend(loc=3, frameon=False)
+   #pl.xlim((7,13))
+   pl.xlim((9,13))
+   pl.ylim((-7, -1)) # new
+   pl.legend(loc=3, frameon=False, fontsize='small', handlelength=1.5,
+         labelspacing=0.3)
    #pl.axis('scaled')
    pl.tight_layout()
    pl.savefig(outpath+'/SMF_z'+str(z)+'.eps')
@@ -432,21 +475,24 @@ clearing the plot figure.
    fig, ax = pl.subplots(1,1)
    
    ax.errorbar(obK[0], obK[2], xerr=obK[1], yerr=[obK[4], obK[3]], 
-               fmt="ob", label="Kormendy \& Ho (2013)", ms=4, mec='k',
-               elinewidth=1)
+               fmt="ok", label="Kormendy \& Ho (2013)", ms=2, mec='k',
+               elinewidth=0.3, zorder=19)
    ax.errorbar(obM[0], obM[2], xerr=obM[1], yerr=[obM[4], obM[3]], 
-               fmt="^g", label="McConnell \& Ma (2013)", ms=4, mec='k',
-               elinewidth=1)
+               fmt="^k", label="McConnell \& Ma (2013)", ms=2, mec='k',
+               elinewidth=0.3, zorder=19)
 
    # This is just for not including the error bars in the legend
    handles, labels = ax.get_legend_handles_labels()
    handles = [h[0] for h in handles]
    ax.legend(handles, labels, frameon=False, loc="upper left",
-             numpoints=1)
+             numpoints=1, fontsize='small', handlelength=1, labelspacing=0.3)
 
-   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   maxlog = math.floor(np.log10(H.sum()*0.05))+1
+   ticks = 10**np.arange(1, maxlog , 1)
    
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlOrBr)
+   #cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlOrBr)
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(vmax=10**(maxlog+0.5)), 
+                    cmap=cm.Reds, zorder=10)
    
    fig.colorbar(cs, ticks=ticks)
 
@@ -994,23 +1040,27 @@ clearing the plot figure.
    # and the plot:
    fig, ax = pl.subplots(1,1)
    
-   ax.errorbar(obs[0], obs[1], yerr=obs[2], fmt="dk", 
-         label="Boselli et al (2014)", ms=6, zorder=10)
+   ax.errorbar(obs[0], obs[1], yerr=obs[2], fmt="ok", 
+         label="Boselli et al (2014)", ms=4, elinewidth=0.5, zorder=20)
    
    # This is just for not including the error bars in the legend
    handles, labels = ax.get_legend_handles_labels()
    handles = [h[0] for h in handles]
-   ax.legend(handles, labels, numpoints=1, loc="upper right")
+   ax.legend(handles, labels, numpoints=1, loc="upper right", fontsize='small',
+             handlelength=2)
    
-   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   maxlog = math.floor(np.log10(H.sum()*0.05))+1
+   ticks = 10**np.arange(1, maxlog, 1)
    
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.Blues)
+   #cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.Blues)
+   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(vmax=10**(maxlog+0.5)), 
+                    cmap=cm.Reds)
    
    fig.colorbar(cs, ticks=ticks)
 
-   ax.plot(sag_x, sag_mean, 'b-', label='SAG')
-   ax.plot(sag_x, sag_mean+sag_std, 'b--')
-   ax.plot(sag_x, sag_mean-sag_std, 'b--')
+   ax.plot(sag_x, sag_mean, 'r-', lw=1.5, label='SAG', zorder=10)
+   ax.plot(sag_x, sag_mean+sag_std, 'r-', lw=0.5)
+   ax.plot(sag_x, sag_mean-sag_std, 'r-', lw=0.5)
    
    ax.set_xlabel(r"$\log_{10}(M_\star [{\rm M}_\odot])$")
    ax.set_ylabel(r"$\log_{10}(M_{\rm gas} / M_\star )$")
@@ -1105,10 +1155,10 @@ clearing the plot figure.
    # Finally, the plot:
    pl.figure()
    x = (bins[1:]+bins[:-1])/2.0
-   pl.plot(x[phi>0], np.log10(phi[phi>0]), '-m', lw=2, label='SAG')
+   pl.plot(x[phi>0], np.log10(phi[phi>0]), '-r', lw=1.5, label='SAG', zorder=10)
    
-   pl.errorbar((obs[1]+obs[0])/2., obs[2] , yerr=obs[3], fmt='ok',
-              label="Gruppioni et al. (2015)", markersize=7, zorder=3)
+   pl.errorbar((obs[1]+obs[0])/2., obs[2] , yerr=obs[3], fmt='ok', mec='k', mew=0.5,
+              label="Gruppioni et al. (2015)", markersize=4, zorder=20, elinewidth=1)
 
    pl.xlabel(r'$\log_{10}({\rm SFR}[{\rm M}_\odot / {\rm yr}])$')
    pl.ylabel(r'$\log_{10}(\Phi[{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
@@ -1366,7 +1416,7 @@ clearing the plot figure.
    #ax.plot(np.log10(obs[0]), np.log10(obs[3]), 'k:')
 
    ax.set_xlabel(r'$\log_{10}(M_{\rm vir} [{\rm M}_\odot])$')
-   ax.set_ylabel(r'$\log_{10}(M_\star / M_{\rm vir})$')
+   ax.set_ylabel(r'$\log_{10}(M_\star [{\rm M}_\odot])$')
    
    ax.set_xlim(xr)
    ax.set_xticks(np.arange(10, 15, 1))
