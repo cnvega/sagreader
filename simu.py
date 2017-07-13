@@ -47,34 +47,13 @@ def plots_MDPL():
 
    #SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
 
-   #SAGplots.GasFrac(data, outfolder, savefile=outdat)
+   #data_tmp = data.select_redshift(0.14, 0.155)  
+   #SAGplots.GasFrac(data_tmp, outfolder, savefile=outdat)
    #SAGplots.SFRF(data, outfolder, savefile=outdat)
    
    SAGplots.MstarMhalo_ratio(data, outfolder, savefile=outdat)
    
    data.clear()
-
-
-def plots_simu():
-
-   outfolder = "plots/MDPL-samp"
-   outdat = outfolder+"/data.h5"
-   
-   data = sag.SAGdata("MDPL", 1000)   
-   infile = "gal_125_SAG7.86_BOX_001.hdf5"
-   data.addFile(infile)
-
-   if not os.path.exists(outfolder):
-      os.makedirs(outfolder)
-
-   # 1st: smf
-   SAGplots.SMF(data, outfolder, savefile=outdat)
-
-   # 2nd: morph
-   SAGplots.FracMorph(data, outfolder, savefile=outdat)
-
-   # BH-B
-   SAGplots.BHBulge(data, outfolder, savefile=outdat)
 
 
 
