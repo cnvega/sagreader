@@ -108,6 +108,7 @@ def replot_folder(outfolder):
 
    #SAGplots.set_style('book', Wfrac=0.75)
    SAGplots.set_style("mnras", Hratio=0.75)
+   #SAGplots.ExtraDatSMF = True
 
    ### Full set of plots:
    #SAGplots.SMF(None, outfolder, readfile=outdat, redshift=0)
@@ -130,8 +131,8 @@ def replot_folder(outfolder):
    #SAGplots_evol.SFRvol_z(None, None, outfolder, readfile=outdat)
 
 if __name__ == '__main__':
-   #replot_folder("plots/SAG-7.128")
-   plots_MDPL()
+   replot_folder("plots/SAG-7.128-paper")
+   #plots_MDPL()
    #plots_stand("SAG-7.96-c05abr16")
    #plots_MDPL_replot()
 

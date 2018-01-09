@@ -24,6 +24,7 @@ import h5py
 from matplotlib import rcParams, colors, ticker, cm
 
 ExtraDatSMF = False
+ContourLevels = np.array([0.01, 0.19, 0.26, 0.38, 0.68, 0.95, 0.997])
 
 def set_style(style='book', Hratio=1.0, Wfrac=1.0):
    if style == 'talk':
@@ -31,7 +32,7 @@ def set_style(style='book', Hratio=1.0, Wfrac=1.0):
    if style == 'book':
       size, fsize = 5.39, 12
    if style == 'mnras':
-      size, fsize = 3.32, 8
+      size, fsize = 3.3, 8
    if style == 'mnras-fw':
       size, fsize = 6.97, 8
 
@@ -42,7 +43,7 @@ def set_style(style='book', Hratio=1.0, Wfrac=1.0):
    mpl.rcParams['legend.fontsize'] = 'medium'
    mpl.rcParams['legend.frameon'] = False
    mpl.rcParams['text.usetex'] = True
-   mpl.rcParams['axes.linewidth'] = 0.5
+   mpl.rcParams['axes.linewidth'] = 1.0
    try:
       mpl.rcParams['xtick.minor.visible'] = True
       mpl.rcParams['ytick.minor.visible'] = True
@@ -191,9 +192,10 @@ clearing the plot figure.
    pl.plot(x[phi>0], np.log10(phi[phi>0]), '-r', lw=1.5, label='SAG', zorder=10)
    pl.errorbar(ob_x, np.log10(ob_y) , yerr=[ob_ed, ob_eu], fmt='ok', mec='k', mew=0.5,
               label="Henriques et al (2013), $z="+str(z)+"$", zorder=20, ms=4,
+              #label="Henriques et al (2013)", zorder=20, ms=4,
               elinewidth=1)
-   pl.xlabel(r'$\log_{10}(M_\star[{\rm M}_\odot])$')
-   pl.ylabel(r'$\log_{10}(\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
+   pl.xlabel(r'$\log (M_\star[{\rm M}_\odot])$')
+   pl.ylabel(r'$\log (\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
    #pl.xlim((7,13))
    pl.xlim((9,13))
    pl.ylim((-7, -1)) # new
@@ -367,7 +369,7 @@ clearing the plot figure.
    
 
 def BHBulge(sagdat, outpath, savefile=None, readfile=False, 
-            SEDmagfilter='NONE', getPlot=False):
+            SEDmagfilter='NONE', levels=None, getPlot=False):
    """ Black hole mass vs bulge mass relationship.  
 
 Routine for generating the super-massive black hole mass versus
@@ -486,19 +488,26 @@ clearing the plot figure.
    handles = [h[0] for h in handles]
    ax.legend(handles, labels, frameon=False, loc="upper left",
              numpoints=1, fontsize='small', handlelength=1, labelspacing=0.3)
-
-   maxlog = math.floor(np.log10(H.sum()*0.05))+1
-   ticks = 10**np.arange(1, maxlog , 1)
    
-   #cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlOrBr)
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(vmax=10**(maxlog+0.5)), 
-                    cmap=cm.Reds, zorder=10)
+   X,Y = np.meshgrid(x,y)
+   hist2D = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
    
-   fig.colorbar(cs, ticks=ticks)
+   if not levels:
+      levels = ContourLevels
+   ticks = levels*hist2D.max()
 
+   # filled areas:
+   cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   # white lines:
+   cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
+         linewidths=0.3, zorder=1, 
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   
+   #fig.colorbar(cs, ticks=ticks)
 
-   ax.set_xlabel(r"$\log_{10}(M_{\rm Bulge} [{\rm M}_\odot])$")
-   ax.set_ylabel(r"$\log_{10}(M_{\rm BH} [{\rm M}_\odot])$")
+   ax.set_xlabel(r"$\log (M_{\rm Bulge} [{\rm M}_\odot])$")
+   ax.set_ylabel(r"$\log (M_{\rm BH} [{\rm M}_\odot])$")
    
    ax.set_xlim(xr)
    ax.set_ylim(yr)
@@ -512,7 +521,7 @@ clearing the plot figure.
    
 
 def TullyFisher(sagdat, outpath, savefile=None, readfile=False, 
-                SEDmagfilter='NONE', getPlot=False):
+                SEDmagfilter='NONE', levels=None, getPlot=False):
    """ Tully-Fisher relationship.  
 
 Routine for generating the Tully-Fisher relationship plot at z=0.
@@ -653,16 +662,25 @@ clearing the plot figure.
    ax.legend(handles, labels, frameon=False, loc="upper left",
              numpoints=1)
 
-   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   X,Y = np.meshgrid(x,y)
+   hist2D = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
    
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.Greens)
+   if not levels:
+      levels = ContourLevels
+   ticks = levels*hist2D.max()
+
+   # filled areas:
+   cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   # white lines:
+   cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
+         linewidths=0.3, zorder=1, 
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
    
-   fig.colorbar(cs, ticks=ticks)
+   #fig.colorbar(cs, ticks=ticks)
 
-   #ax.plot(np.log10(Vrot), Magr, ".k", markersize=0.1)
-
-   ax.set_xlabel(r"$\log_{10}(V_{\rm flat} [{\rm km/s}])$")
-   ax.set_ylabel(r"$M_{\rm r} - 5 \log_{10} h$")
+   ax.set_xlabel(r"$\log (V_{\rm flat} [{\rm km/s}])$")
+   ax.set_ylabel(r"$M_{\rm r} - 5 \log h$")
    
    ax.set_xlim(xr)
    ax.set_ylim([yr[1],yr[0]])
@@ -676,7 +694,7 @@ clearing the plot figure.
    
    
 def CMD(sagdat, outpath, savefile=None, readfile=False, 
-        masscut=0., divpar=(1.8, 18.7), getPlot=False):
+        masscut=0., divpar=(1.8, 18.7), levels=None, getPlot=False):
    """ Color-magnitud diagram.  
 
 Routine for generating the color-magnitud distribution plot at z=0.
@@ -771,12 +789,24 @@ clearing the plot figure.
    
    # and the plot:
    fig, ax = pl.subplots(1,1)
+
+   X,Y = np.meshgrid(x,y)
+   hist2D = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
    
-   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.05))+1, 1)
+   if not levels:
+      levels = ContourLevels
+   ticks = levels*hist2D.max()
+
+   # filled areas:
+   cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   # white lines:
+   cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
+         linewidths=0.3, zorder=1, 
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
    
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlGn)
-   
-   fig.colorbar(cs, ticks=ticks)
+   #cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlGn)
+   #fig.colorbar(cs, ticks=ticks)
 
    xdiv = np.arange(xr[0], xr[1], 0.01)
    ydiv = divpar[0] - 0.2444*np.tanh((xdiv+divpar[1])/1.09)
@@ -930,7 +960,7 @@ clearing the plot figure.
    return 
 
 def GasFrac(sagdat, outpath, savefile=None, readfile=False, 
-            getPlot=False, SFRcut=1e-11):
+            getPlot=False, levels=None, SFRcut=1e-11):
    """ Gas fracion versus stellar mass.  
 
 (To be completed)
@@ -1049,21 +1079,29 @@ clearing the plot figure.
    ax.legend(handles, labels, numpoints=1, loc="upper right", fontsize='small',
              handlelength=2)
    
-   maxlog = math.floor(np.log10(H.sum()*0.05))+1
-   ticks = 10**np.arange(1, maxlog, 1)
+   X,Y = np.meshgrid(x,y)
+   hist2D = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
    
-   #cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.Blues)
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(vmax=10**(maxlog+0.5)), 
-                    cmap=cm.Reds)
+   if not levels:
+      levels = ContourLevels
+   ticks = levels*hist2D.max()
+
+   # filled areas:
+   cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   # white lines:
+   cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
+         linewidths=0.3, zorder=1, 
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
    
-   fig.colorbar(cs, ticks=ticks)
+   #fig.colorbar(cs, ticks=ticks)
 
    ax.plot(sag_x, sag_mean, 'r-', lw=1.5, label='SAG', zorder=10)
    ax.plot(sag_x, sag_mean+sag_std, 'r-', lw=0.5)
    ax.plot(sag_x, sag_mean-sag_std, 'r-', lw=0.5)
    
-   ax.set_xlabel(r"$\log_{10}(M_\star [{\rm M}_\odot])$")
-   ax.set_ylabel(r"$\log_{10}(M_{\rm gas} / M_\star )$")
+   ax.set_xlabel(r"$\log (M_\star [{\rm M}_\odot])$")
+   ax.set_ylabel(r"$\log (M_{\rm cold} / M_\star )$")
    
    ax.set_xlim(xr)
    ax.set_xticks(np.arange(8,13))
@@ -1160,8 +1198,8 @@ clearing the plot figure.
    pl.errorbar((obs[1]+obs[0])/2., obs[2] , yerr=obs[3], fmt='ok', mec='k', mew=0.5,
               label="Gruppioni et al. (2015)", markersize=4, zorder=20, elinewidth=1)
 
-   pl.xlabel(r'$\log_{10}({\rm SFR}[{\rm M}_\odot / {\rm yr}])$')
-   pl.ylabel(r'$\log_{10}(\Phi[{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
+   pl.xlabel(r'$\log ({\rm SFR}[{\rm M}_\odot\,{\rm yr}^{-1}])$')
+   pl.ylabel(r'$\log (\Phi[{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
    pl.xlim((-1,3))
    pl.xticks(np.arange(-1,4,1))
    pl.yticks(np.arange(-9,0,2))
@@ -1174,7 +1212,8 @@ clearing the plot figure.
    pl.clf()
    return
 
-def MstarMhalo_ratio(sagdat, outpath, savefile=None, readfile=False, getPlot=False):
+def MstarMhalo_ratio(sagdat, outpath, savefile=None, readfile=False, 
+                     levels=None, getPlot=False):
    """ Stellar to halo Mass ratio
 
 Routine for generating the stellar/halo mass versus halo mass.
@@ -1259,12 +1298,23 @@ clearing the plot figure.
 
    # Finally, the plot:
    fig, ax = pl.subplots(1,1)
-
-   ticks = 10**np.arange(1, math.floor(np.log10(H.sum()*0.1))+1, 1)
    
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.BuPu)
+   X,Y = np.meshgrid(x,y)
+   hist2D = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
+   
+   if not levels:
+      levels = ContourLevels
+   ticks = levels*hist2D.max()
 
-   fig.colorbar(cs, ticks=ticks)
+   # filled areas:
+   cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   # white lines:
+   cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
+         linewidths=0.3, zorder=1, 
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   
+   #fig.colorbar(cs, ticks=ticks)
 
    ax.plot(np.log10(obs[0]), np.log10(obs[1]/obs[0]), 'k-', label='Moster et al. (2010)')
    ax.plot(np.log10(obs[0]), np.log10(obs[2]/obs[0]), 'k--')
@@ -1287,7 +1337,7 @@ clearing the plot figure.
    return
 
 def MstarMhalo(sagdat, outpath, savefile=None, readfile=False, galTypes=(0,1),
-               getPlot=False):
+               levels=None, getPlot=False):
    """ Stellar mass vs to halo Mass
 
 Routine for generating the stellar versus halo mass.
@@ -1357,6 +1407,7 @@ clearing the plot figure.
 
       delta = 0.5
       sag_x = np.arange(10, 14, delta)
+      #sag_x = np.arange(10-0.25, 14, delta)    # shift for comparing plots
       sag_mean, sag_std = np.zeros(sag_x.shape), np.zeros(sag_x.shape)
       for i, cen in enumerate(sag_x):
          mrange = (cen-delta/2. <= Mhalo)&(Mhalo < cen+delta/2.)
@@ -1398,25 +1449,36 @@ clearing the plot figure.
 
    # Finally, the plot:
    fig, ax = pl.subplots(1,1)
-
-   ticks = 10**np.arange(0, math.floor(np.log10(H.sum()*0.1))+1, 1)
    
-   cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.BuPu)
+   X,Y = np.meshgrid(x,y)
+   hist2D = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
+   
+   if not levels:
+      levels = ContourLevels
+   ticks = levels*hist2D.max()
 
-   fig.colorbar(cs, ticks=ticks)
+   # filled areas:
+   cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   # white lines:
+   cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
+         linewidths=0.3, zorder=1, 
+         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+   
+   #fig.colorbar(cs, ticks=ticks)
 
-   ax.errorbar(sag_x, sag_mean, yerr=sag_std, xerr=sag_dx[0], fmt='ms', label='SAG', ms=3, 
-               mec='k')
+   ax.errorbar(sag_x, sag_mean, yerr=sag_std, xerr=sag_dx[0], fmt='rs', label='SAG', ms=3, 
+               mec='k', mew=0.5)
    #ax.plot(sag_x, sag_mean+sag_std, 'm--')
    #ax.plot(sag_x, sag_mean-sag_std, 'm--')
 
    ax.plot(np.log10(obs[0]), np.log10(obs[1]), 'k-', label='Moster et al. (2010)',
-                     lw=1, zorder=10)
+                     lw=1.5, zorder=10)
    #ax.plot(np.log10(obs[0]), np.log10(obs[2]), 'k:')
    #ax.plot(np.log10(obs[0]), np.log10(obs[3]), 'k:')
 
-   ax.set_xlabel(r'$\log_{10}(M_{\rm vir} [{\rm M}_\odot])$')
-   ax.set_ylabel(r'$\log_{10}(M_\star [{\rm M}_\odot])$')
+   ax.set_xlabel(r'$\log (M_{\rm vir} [{\rm M}_\odot])$')
+   ax.set_ylabel(r'$\log (M_\star [{\rm M}_\odot])$')
    
    ax.set_xlim(xr)
    ax.set_xticks(np.arange(10, 15, 1))
