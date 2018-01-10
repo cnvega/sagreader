@@ -38,10 +38,10 @@ def compare_models():
    
    x = (bins[1:]+bins[:-1])/2.0
    p.plot(x[phi>0], np.log10(phi[phi>0]), '--b', lw=1.5, 
-          label=r'SAG, $\beta_\mathrm{F}=1.3$', zorder=9)
+          label=r'SAG$_{\beta1.3}$', zorder=9)
    p.legend(loc=3, frameon=False, fontsize='small', handlelength=2,
             labelspacing=0.3)
-   p.savefig(outfolder+'/SMF_z0.eps')
+   p.savefig(outfolder+'/SMF_z0_comp.eps')
 
    ## -------------------------------------------------
    ### BH-Bulge mass relationship:
@@ -56,12 +56,16 @@ def compare_models():
    y = (yedges[1:]+yedges[:-1])/2
 
    X,Y = np.meshgrid(x,y)
-   maxlog = math.floor(np.log10(H.sum()*0.05))+1
-   ticks = 10**np.arange(1, maxlog, 1)
+   
+   newH = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
+   ticks = np.array([0.01, 0.19, 0.26, 0.38, 0.68, 0.95, 0.997])*newH.max()
 
-   p.contour(X, Y, H.T, levels=ticks, zorder=11, colors='b', linewidths=0.5,
+   p.text(0.8, 0.1, r'$z = 0$', transform=p.gca().transAxes)
+
+   p.contour(X, Y, newH, levels=ticks, zorder=11, colors='b', linewidths=0.5,
              linestyles=':')
-   p.savefig(outfolder+'/BHBulge.eps')
+   p.tight_layout()
+   p.savefig('BHBulge_comp.eps')
 
    ## -------------------------------------------------
    ### Gas fraction of the galaxies:
@@ -79,17 +83,20 @@ def compare_models():
    y = (yedges[1:]+yedges[:-1])/2
    
    X,Y = np.meshgrid(x,y)
-   maxlog = math.floor(np.log10(H.sum()*0.05))+1
-   ticks = 10**np.arange(1, maxlog, 1)
+   newH = H.T/(xedges[1]-xedges[0])/(yedges[1]-yedges[0])
+   ticks = np.array([0.01, 0.19, 0.26, 0.38, 0.68, 0.95, 0.997])*newH.max()
 
-   p.contour(X, Y, H.T, levels=ticks, zorder=9, colors='b', linewidths=0.5,
+   p.contour(X, Y, newH, levels=ticks, zorder=9, colors='b', linewidths=0.5,
              linestyles=':')
    
+   p.text(0.8, 0.8, r'$z = 0$', transform=p.gca().transAxes)
+
    p.plot(sag_x, sag_mean, 'b--', lw=1.5, label='SAG')
    #p.plot(sag_x, sag_mean+sag_std, 'b--', lw=0.5)
    #p.plot(sag_x, sag_mean-sag_std, 'b--', lw=0.5)
    
-   p.savefig(outfolder+'/GasFrac.eps')
+   p.tight_layout()
+   p.savefig('GasFrac_comp.eps')
    
    f.close()
 
