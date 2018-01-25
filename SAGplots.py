@@ -196,9 +196,10 @@ clearing the plot figure.
               elinewidth=1)
    pl.xlabel(r'$\log (M_\star[{\rm M}_\odot])$')
    pl.ylabel(r'$\log (\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm dex}^{-1}])$')
-   #pl.xlim((7,13))
-   pl.xlim((9,13))
-   pl.ylim((-7, -1)) # new
+   pl.xlim((6,13))
+   #pl.xlim((9,13))
+   pl.ylim((-7, 1)) # new
+   #pl.ylim((-7, -1)) # new
    pl.legend(loc=3, frameon=False, fontsize='small', handlelength=1.5,
          labelspacing=0.3)
    #pl.axis('scaled')
@@ -498,11 +499,11 @@ clearing the plot figure.
 
    # filled areas:
    cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    # white lines:
    cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
          linewidths=0.3, zorder=1, 
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    
    #fig.colorbar(cs, ticks=ticks)
 
@@ -671,11 +672,11 @@ clearing the plot figure.
 
    # filled areas:
    cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    # white lines:
    cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
          linewidths=0.3, zorder=1, 
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    
    #fig.colorbar(cs, ticks=ticks)
 
@@ -799,11 +800,11 @@ clearing the plot figure.
 
    # filled areas:
    cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    # white lines:
    cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
          linewidths=0.3, zorder=1, 
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    
    #cs = ax.contourf(x, y, H.T, ticks, norm=colors.LogNorm(), cmap=cm.YlGn)
    #fig.colorbar(cs, ticks=ticks)
@@ -1021,8 +1022,7 @@ clearing the plot figure.
       flt = (GasMass > 0)&(sSFR > SFRcut)
       del sSFR
       
-      # 0.75 correction for the Bosseli data.
-      Gas_Mstar = np.log10(0.75*GasMass[flt]/StellarMass[flt])
+      Gas_Mstar = np.log10(GasMass[flt]/StellarMass[flt])
       Mstar     = np.log10(StellarMass[flt])
       del GasMass, StellarMass
 
@@ -1088,11 +1088,11 @@ clearing the plot figure.
 
    # filled areas:
    cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    # white lines:
    cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
          linewidths=0.3, zorder=1, 
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    
    #fig.colorbar(cs, ticks=ticks)
 
@@ -1308,11 +1308,11 @@ clearing the plot figure.
 
    # filled areas:
    cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    # white lines:
    cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
          linewidths=0.3, zorder=1, 
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    
    #fig.colorbar(cs, ticks=ticks)
 
@@ -1459,11 +1459,11 @@ clearing the plot figure.
 
    # filled areas:
    cs = ax.contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    # white lines:
    cs = ax.contour(X, Y, hist2D, ticks, colors='white', 
          linewidths=0.3, zorder=1, 
-         norm=colors.Normalize(vmin=0.0001*newH.max(), vmax=1.2*newH.max()))
+         norm=colors.Normalize(vmin=0.0001*hist2D.max(), vmax=1.2*hist2D.max()))
    
    #fig.colorbar(cs, ticks=ticks)
 
