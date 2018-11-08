@@ -1497,3 +1497,308 @@ clearing the plot figure.
    if getPlot: return pl
    pl.clf()
    return
+
+
+def LFs_SDSS(sagdat, outpath, savefile=None, readfile=False, 
+             little_h=0.6777, getPlot=False):
+   """ SDSS luminosity functions
+
+Routine for generating the z=0 SDSS luminostiy functions.
+
+@param sagdat Input SAGreader.SAGdata object data previously loaded
+with the corresponding redshift. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
+   print("### SDSS Luminosity Functions")
+
+   datapath = './Data/LFs/'
+   
+   filters   = list('ugriz')
+   cols_plot = list('bcgyr')
+   obs = {}
+
+   for fil in filters:
+      x, phi, phi_u = np.loadtxt(datapath+"SDSS_"+fil+".csv", unpack=True, 
+                                 skiprows=1, delimiter=",")
+      obs[fil] = {}
+      obs[fil]["Mag"] = x - 5.*np.log10(1) + 5.*np.log10(little_h)
+      obs[fil]["Phi"] = phi - np.log10(0.5) 
+      obs[fil]["Phid"] = phi_u - phi
+   
+   lfs = {}
+   if not readfile:
+    
+      # consistency check:
+      #if 'Mag_gS_dust' not in sagdat.datasetList():
+      #   print("ERROR: Magnitude didn't found in file")
+      #   return 
+      
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+
+      else:
+         BulgeMass = sagdat.readDataset("BulgeMass")
+         DiscMass = sagdat.readDataset("DiscMass")
+
+      # Units:
+      un = sagdat.readUnits()
+      flt = (BulgeMass + DiscMass) > 0
+      del BulgeMass, DiscMass 
+      
+      Vol = sagdat.boxSizeMpc**3
+      
+      for fil in filters:
+         print(fil+" filter")
+         lfs[fil] = {}
+         mags = sagdat.readDataset('Magnitudes/Mag_'+fil+'S_dust',
+               idxfilter=flt)
+         mags += 5.*np.log10(un.h)
+         
+         phi_i, bins = np.histogram(mags, bins=45, range=[-26,-14])
+
+         phi = phi_i.astype(float)/Vol/(bins[1]-bins[0])
+         
+         lfs[fil]['phi'] = phi
+         lfs[fil]['bins'] = bins
+         
+         del mags
+
+   else: # load the histograms from a file:
+      f = h5py.File(readfile, "r")
+      for fil in filters:
+         lfs[fil] = {}
+         lfs[fil]['bins'] = f['LFs_SDSS/'+fil+'/bins'][:] 
+         lfs[fil]['phi']  = f['LFs_SDSS/'+fil+'/phi'][:] 
+      f.close()
+
+   if savefile:
+      f = h5py.File(savefile)
+      if 'LFs_SDSS' in f.keys(): del f['LFs_SDSS']
+      for fil in filters:
+         f['LFs_SDSS/'+fil+'/bins'] = lfs[fil]['bins']
+         f['LFs_SDSS/'+fil+'/phi']  = lfs[fil]['phi'] 
+      f.close()
+
+   # Finally, the plot:
+   pl.figure()
+   fig, ax = pl.subplots(nrows=2, ncols=3, sharey=True)
+   axid = [(i,j) for i in [0,1] for j in [0,1,2] ]
+
+   for fil, col, ai in zip(filters, cols_plot, axid[:-1]):
+      x = (lfs[fil]['bins'][1:] + lfs[fil]['bins'][:-1])/2.0
+      phi = lfs[fil]['phi']
+
+      xm = max(obs[fil]['Mag'])+0.5
+      ax[ai].plot(x[(phi>0)&(x<xm)], np.log10(phi[(phi>0)&(x<xm)]), '-', color=col, lw=2)
+      
+      ax[1,2].plot(x[phi>0], np.log10(phi[phi>0]), '-', color=col, lw=1,
+            label="SAG, SDSS $"+fil+"$")
+   
+      # the observations:
+      ax[ai].errorbar(obs[fil]['Mag'], obs[fil]['Phi'], yerr=obs[fil]['Phid'],
+                     label="SDSS "+fil, fmt='ok',  ms=5, mew=0.5,
+                      elinewidth=1, capthick=1, capsize=3)
+      ax[ai].set_xlabel(r'$M_{\rm '+fil+'} - 5\log h\;\;$ [mag]')
+      ax[ai].set_ylim((-5,-1))
+      if 0 == ai[1]:
+         ax[ai].set_ylabel(r'$\log (\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm mag}^{-1}])$')
+         ax[ai].set_yticks(np.arange(-5, 0))
+   
+   ax[1,2].legend(frameon=False, fontsize='small', handlelength=1.5,
+         labelspacing=0.3)
+   ax[1,2].set_xlabel(r'$M - 5\log h\;\;$ [mag]')
+   ax[1,2].set_xlim([-26, -16])
+   
+   pl.tight_layout()
+   pl.savefig(outpath+'/LFs_SDSS.eps')
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   return 
+
+
+def CMDs_SDSS(sagdat, outpath, savefile=None, readfile=False, 
+              B_cut=-18, levels=None, getPlot=False):
+   """ SDSS Color-magnitude diagrams.
+
+Routine for generating the z=0 CMDs.
+
+@param sagdat Input SAGreader.SAGdata object data previously loaded
+with the corresponding redshift. Can be replaced by None if 
+'readfile' is set.
+
+@param outpath Output folder in which the plot is going to be stored.
+The name is chosen automatically by default.
+
+@param savefile (optional) HDF5 file in which the resulting data is 
+stored after being calculated. It should not be used together with 
+the 'readfile' option.
+
+@param readfile (optional) HDF5 file from which the data is loaded
+instead of being read from 'sagdat'. It should not be used together with 
+the 'savefile' option.
+
+@param getPlot (optional) If set to True, the reference to 
+matplotlib.pylab is returned by the function at the end instead of
+clearing the plot figure.
+   """
+   print("### SDSS color magnitude diagrams")
+
+   datapath = './Data/LFs/'
+   
+   filters   = list('ugriz')
+   
+   obs = {}
+
+   xr = [-24.1,-15.8]
+   yr = [-1.05,3.05]
+  
+   medcols = {'u':0.81, 'g':0.38, 'r':1.21, 
+               'i':1.62, 'z':1.94}
+
+   lfs = {}
+   cmds = {}
+   if not readfile:
+    
+      if sagdat.reduced:
+         BulgeMass = sagdat.readDataset("M_star_bulge")
+         DiscMass = sagdat.readDataset("M_star_disk")
+
+      else:
+         BulgeMass = sagdat.readDataset("BulgeMass")
+         DiscMass = sagdat.readDataset("DiscMass")
+
+      un = sagdat.readUnits()
+      mag = sagdat.readDataset('Magnitudes/Mag_B_dust')
+      mag += 5.*np.log10(un.h)
+      
+      flt = ((BulgeMass + DiscMass) > 0)&(mag<B_cut)
+      del BulgeMass, DiscMass 
+      
+      Vol = sagdat.boxSizeMpc**3
+      
+      phi_i, bins = np.histogram(mag, bins=45, range=[-26,-14])
+
+      phi = phi_i.astype(float)/Vol/(bins[1]-bins[0])
+      
+      lfs['phi'] = phi
+      lfs['bins'] = bins
+    
+      magB = mag[flt]
+      del mag
+      
+      for fil in filters:
+         print(fil+" filter")
+         cmds[fil] = {}
+         mags = sagdat.readDataset('Magnitudes/Mag_'+fil+'S_dust',
+               idxfilter=flt)
+         mags += 5.*np.log10(un.h)
+       
+         if fil == 'u':
+            col = mags - magB
+         else:
+            col = magB - mags
+
+         H, xedges, yedges = np.histogram2d(mags,col, range=[xr,yr], bins=80)
+         del mags, col
+         cmds[fil]['H'] = H
+         cmds[fil]['xe'] = xedges
+         cmds[fil]['ye'] = yedges
+
+
+   #else: # load the histograms from a file:
+   #   f = h5py.File(readfile, "r")
+   #   for fil in filters:
+   #      lfs[fil] = {}
+   #      lfs[fil]['bins'] = f['LFs_SDSS/'+fil+'/bins'][:] 
+   #      lfs[fil]['phi']  = f['LFs_SDSS/'+fil+'/phi'][:] 
+   #   f.close()
+
+   if savefile:
+      f = h5py.File(savefile)
+      if 'CMDs_SDSS' in f.keys(): del f['CMDs_SDSS']
+      for fil in filters:
+         f['CMDs_SDSS/'+fil+'/H'] = cmds[fil]['H']
+         f['CMDs_SDSS/'+fil+'/xedges'] = cmds[fil]['xe']
+         f['CMDs_SDSS/'+fil+'/yedges'] = cmds[fil]['ye']
+         f['CMDs_SDSS/phi_B'] = lfs['phi']
+         f['CMDs_SDSS/bins_B'] = lfs['bins']
+      f.close()
+   
+   if not levels:
+      levels = ContourLevels
+
+   # Finally, the plot:
+   pl.figure()
+   
+   fig, ax = pl.subplots(nrows=2, ncols=3)
+   axid = [(i,j) for i in [0,1] for j in [0,1,2] ]
+
+   xcut = np.arange(xr[0], xr[1]+1, 0.2)
+   for fil, ai in zip(filters, axid[:-1]):
+
+      H = np.ma.masked_where(cmds[fil]['H']<=0, cmds[fil]['H'])
+      x = (cmds[fil]['xe'][1:]+cmds[fil]['xe'][:-1])/2
+      y = (cmds[fil]['ye'][1:]+cmds[fil]['ye'][:-1])/2
+   
+      X,Y = np.meshgrid(x,y)
+      hist2D = H.T/(cmds[fil]['xe'][1]-cmds[fil]['xe'][0])/(cmds[fil]['ye'][1]-cmds[fil]['ye'][0])
+      ticks = levels*hist2D.max()
+      # filled areas:
+      cs = ax[ai].contourf(X, Y, hist2D, ticks, cmap=cm.Reds, zorder=1,
+            norm=colors.Normalize(vmin=-0.3*hist2D.max(), vmax=1.2*hist2D.max()))
+      # white lines:
+      cs = ax[ai].contour(X, Y, hist2D, ticks, colors='white', 
+            linewidths=0.1, zorder=1, 
+            norm=colors.Normalize(vmin=-0.3*hist2D.max(), vmax=1.2*hist2D.max()))
+
+      ax[ai].set_xlabel(r'$M_{\rm '+fil+'} - 5\log h$') 
+      if fil == 'u':
+         ax[ai].set_ylabel(r'${\rm '+fil+' - B}$')
+         ycut = xcut - B_cut
+      else:
+         ax[ai].set_ylabel(r'${\rm B - '+fil+'}$')
+         ycut = B_cut - xcut
+      
+      # observed medians:
+      ax[ai].plot(xr, [medcols[fil]]*2, '-k', lw=1)
+
+      # the cut in B:
+      ax[ai].plot(xcut, ycut, ':k', lw=1)
+      ax[ai].set_ylim([-1, 3])
+      ax[ai].set_xlim([-24, -16])
+
+   x = (lfs['bins'][1:] + lfs['bins'][:-1])/2.0
+   phi = lfs['phi']
+
+   ax[1,2].plot(x[phi>0], np.log10(phi[phi>0]), '-r', lw=2)
+   
+   ax[1,2].set_xlabel(r'$M_{\rm B} - 5\log h\;\;$ [mag]')
+   ax[1,2].set_ylabel(r'$\log (\Phi\,h^{3} [{\rm Mpc}^{-3} {\rm mag}^{-1}])$')
+   ax[1,2].plot([B_cut, B_cut], [-10, 0], ':k', lw=1)
+   ax[1,2].set_xlim([-26, -16])
+   ax[1,2].set_ylim([-6,-1])
+   
+
+   pl.tight_layout()
+   pl.savefig(outpath+'/CMDs_SDSS.eps')
+   print("Done!")
+   if getPlot: return pl
+   pl.clf()
+   return 
