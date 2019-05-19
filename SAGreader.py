@@ -838,6 +838,8 @@ omitted here).
          values = line.split() 
          if 5 == len(values):
             snap, a, z = values[0:3]
+         if 3 == len(values):
+            snap, a, z = values
          if 1 == len(values):
             snap = snp
             snp += 1
