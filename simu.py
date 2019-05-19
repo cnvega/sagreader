@@ -46,6 +46,7 @@ def plots_MDPL():
    #snaplist = sag.SnapList("/fast_scratch2/cnvega/MDPL/snapidzred.txt")
 
    #SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
+   #SAGplots_evol.SFRvol_z_massbin(data, snaplist, outfolder, savefile=outdat)
 
    #data_tmp = data.select_redshift(0.14, 0.155)  
    #SAGplots.GasFrac(data_tmp, outfolder, savefile=outdat)
@@ -55,48 +56,6 @@ def plots_MDPL():
    
    data.clear()
 
-
-
-def plots_stand(modelid):
-   
-   outfolder = "plots/Stand/"+modelid
-   outdat = outfolder+"/data.h5"
-
-   if not os.path.exists(outfolder):
-      os.makedirs(outfolder)
-
-   salidaSAM = "/data/Stand/SalidaSAM/"+modelid+"/Subgalaxies"
-
-   data = sag.SAGcollection(salidaSAM, boxSizeMpc=150.0, keepOpen=False)
-
-   # 1st: smfs
-   SAGplots.SMF(data, outfolder, savefile=outdat)
-
-   #data_tmp = data.select_redshift(0.98, 1.05)
-   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=1)
-
-   #data_tmp = data.select_redshift(1.98, 2.1)
-   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=2)
-
-   #data_tmp = data.select_redshift(2.98, 3.1)
-   #SAGplots.SMF(data_tmp, outfolder, savefile=outdat, redshift=3)
-
-   # 2nd: morph
-   SAGplots.FracMorph(data, outfolder, savefile=outdat)
-
-   # BH-B
-   SAGplots.BHBulge(data, outfolder, savefile=outdat)
-
-   # T-F
-   SAGplots.TullyFisher(data, outfolder, savefile=outdat)
-   
-   # SFR density:
-
-   snaplist = sag.SnapList("/data/Stand/outputs_STAND.dat")
-
-   SAGplots_evol.SFRvol_z(data, snaplist, outfolder, savefile=outdat)
-
-   data.clear()
 
 def replot_folder(outfolder):
 
@@ -131,8 +90,8 @@ def replot_folder(outfolder):
    #SAGplots_evol.SFRvol_z(None, None, outfolder, readfile=outdat)
 
 if __name__ == '__main__':
-   replot_folder("plots/SAG-7.128-paper")
-   #plots_MDPL()
+   plots_MDPL()
+   #replot_folder("plots/SAG-7.128-paper")
    #plots_stand("SAG-7.96-c05abr16")
    #plots_MDPL_replot()
 
